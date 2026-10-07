@@ -43,6 +43,7 @@ builds a single shaded runnable jar.
 | `yggdrasil.key` | demo key | 32 hex characters for the 16-byte Ascon key; replace for non-demo use |
 | `anonymizer.salt` | demo salt | HMAC salt used to create stable neutral labels; replace for non-demo use |
 | `diff.window-size` | `30` | Samples per metric window and baseline capacity |
+| `diff.window-seconds` | `0` | `0` uses sample-count windows; positive values use elapsed-time windows |
 | `diff.threshold-pct` | `25` | Minimum absolute percentage change |
 | `diff.vibrationRms.mode` / `.threshold` | `percent` / `25` | Vibration threshold; legacy `diff.threshold-pct` remains the fallback |
 | `diff.tempC.mode` / `.threshold` | `absolute` / `4.0` | Temperature threshold in °C |

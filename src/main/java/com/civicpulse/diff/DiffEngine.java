@@ -13,6 +13,7 @@ import java.util.Map;
 
 public final class DiffEngine {
     private static final List<String> METRICS = List.of("vibrationRms", "tempC", "rfPowerDb");
+    private static final int MAX_TIME_WINDOW_SAMPLES = 4096;
     private final int windowSize;
     private final double thresholdPct;
     private final int persistenceWindows;
@@ -24,6 +25,7 @@ public final class DiffEngine {
     private final Map<String, Threshold> thresholds;
     private final double longTermAlpha;
     private final double longTermThresholdScale;
+    private final long windowSeconds;
     private final Map<String, Map<String, MetricState>> states = new LinkedHashMap<>();
     private final Map<String, Reading> latestReadings = new LinkedHashMap<>();
 
@@ -55,10 +57,20 @@ public final class DiffEngine {
                           long cooldownMs, int dropoutIntervals, long expectedIntervalMs,
                           int maxNodes, long nodeTtlMs, Map<String, Threshold> thresholds,
                           double longTermAlpha, double longTermThresholdScale) {
+                    this(windowSize, thresholdPct, persistenceWindows, cooldownMs, dropoutIntervals,
+                        expectedIntervalMs, maxNodes, nodeTtlMs, thresholds, longTermAlpha,
+                        longTermThresholdScale, 0);
+                    }
+
+                    public DiffEngine(int windowSize, double thresholdPct, int persistenceWindows,
+                              long cooldownMs, int dropoutIntervals, long expectedIntervalMs,
+                              int maxNodes, long nodeTtlMs, Map<String, Threshold> thresholds,
+                              double longTermAlpha, double longTermThresholdScale, long windowSeconds) {
         if (windowSize < 2 || thresholdPct < 0 || persistenceWindows < 1 || cooldownMs < 0
                     || dropoutIntervals < 1 || expectedIntervalMs < 1 || maxNodes < 1 || nodeTtlMs < 1
                     || !Double.isFinite(longTermAlpha) || longTermAlpha <= 0 || longTermAlpha > 1
-                    || !Double.isFinite(longTermThresholdScale) || longTermThresholdScale < 0) {
+                        || !Double.isFinite(longTermThresholdScale) || longTermThresholdScale < 0
+                        || windowSeconds < 0 || windowSeconds > Long.MAX_VALUE / 1000) {
             throw new IllegalArgumentException("Invalid diff-engine configuration");
         }
         this.windowSize = windowSize;
@@ -72,6 +84,7 @@ public final class DiffEngine {
         this.thresholds = Map.copyOf(thresholds);
         this.longTermAlpha = longTermAlpha;
         this.longTermThresholdScale = longTermThresholdScale;
+        this.windowSeconds = windowSeconds;
     }
 
     public synchronized List<DeltaRecord> accept(Reading reading) {
@@ -148,6 +161,8 @@ public final class DiffEngine {
         private long lastAlertTs = Long.MIN_VALUE;
         private long lastSeenTs = Long.MIN_VALUE;
         private long lastDropoutAlertTs = Long.MIN_VALUE;
+        private long baselineStartTs = Long.MIN_VALUE;
+        private long liveStartTs = Long.MIN_VALUE;
         private boolean dropoutReported;
         private double latestValue = Double.NaN;
         private double longTermReference = Double.NaN;
@@ -171,14 +186,19 @@ public final class DiffEngine {
 
         private DeltaRecord accept(Reading reading, String metric, double value) {
             latestValue = value;
-            if (baseline.size() < windowSize) {
-                addWindow(baseline, value);
-                if (baseline.size() == windowSize) longTermReference = mean(baseline);
+            long receiveTime = reading.receivedTs();
+            if (Double.isFinite(longTermReference)) {
+                if (live.isEmpty()) liveStartTs = receiveTime;
+                addLive(value);
+                if (!liveWindowComplete(receiveTime)) return null;
+            } else {
+                if (baselineStartTs == Long.MIN_VALUE) baselineStartTs = receiveTime;
+                addBaseline(value);
+                if (!baselineWindowComplete(receiveTime)) return null;
+                longTermReference = mean(baseline);
                 return null;
             }
 
-            live.addLast(value);
-            if (live.size() < windowSize) return null;
             double baselineMean = mean(baseline);
             double liveMean = mean(live);
                 Threshold threshold = thresholds.getOrDefault(metric, new Threshold("percent", thresholdPct));
@@ -202,10 +222,16 @@ public final class DiffEngine {
             if (!candidate) {
                 consecutiveCandidates = 0;
                 if (!thresholdAnomaly) {
-                    for (double sample : live) addWindow(baseline, sample);
+                    if (windowSeconds == 0) {
+                        for (double sample : live) addWindow(baseline, sample);
+                    } else {
+                        baseline.clear();
+                        baseline.addAll(live);
+                    }
                     longTermReference += longTermAlpha * (liveMean - longTermReference);
                 }
                 live.clear();
+                liveStartTs = Long.MIN_VALUE;
                 return null;
             }
 
@@ -215,16 +241,43 @@ public final class DiffEngine {
                 if (consecutiveCandidates >= persistenceWindows) {
                     int position = patch.getDeltas().get(0).getTarget().getPosition();
                     live.clear();
+                    liveStartTs = Long.MIN_VALUE;
                     return null;
                 }
                 live.clear();
+                liveStartTs = Long.MIN_VALUE;
                 return null;
             }
             lastAlertTs = reading.ts();
             int position = patch.getDeltas().get(0).getTarget().getPosition();
             live.clear();
+            liveStartTs = Long.MIN_VALUE;
                 return new DeltaRecord(reading.nodeLabel(), metric, pctChange, position, reading.ts(),
                     "SHIFT", absoluteChange, threshold.mode());
+        }
+
+        private boolean baselineWindowComplete(long now) {
+            if (windowSeconds == 0) return baseline.size() >= windowSize;
+            return baseline.size() >= 2 && now - baselineStartTs >= windowSeconds * 1000;
+        }
+
+        private boolean liveWindowComplete(long now) {
+            if (windowSeconds == 0) return live.size() >= windowSize;
+            return now - liveStartTs >= windowSeconds * 1000;
+        }
+
+        private void addBaseline(double value) {
+            if (windowSeconds == 0) addWindow(baseline, value);
+            else {
+                baseline.addLast(value);
+                while (baseline.size() > MAX_TIME_WINDOW_SAMPLES) baseline.removeFirst();
+            }
+        }
+
+        private void addLive(double value) {
+            live.addLast(value);
+            int limit = windowSeconds == 0 ? windowSize : MAX_TIME_WINDOW_SAMPLES;
+            while (live.size() > limit) live.removeFirst();
         }
     }
 

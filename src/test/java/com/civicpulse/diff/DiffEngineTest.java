@@ -143,6 +143,22 @@ class DiffEngineTest {
         assertEquals(1.0, stats.longTermMean(), 0.001);
     }
 
+    @Test
+    void elapsedTimeWindowsCompleteOnDurationDespiteIrregularSamples() {
+        DiffEngine engine = new DiffEngine(30, 25, 1, 0, 5, 1000, 500, 3_600_000,
+                java.util.Map.of("vibrationRms", new DiffEngine.Threshold("percent", 25)),
+                0.001, 1.0, 2);
+        engine.accept(timeReading(1.0, 0));
+        engine.accept(timeReading(1.0, 500));
+        engine.accept(timeReading(1.0, 2000));
+        engine.accept(timeReading(2.0, 2500));
+        engine.accept(timeReading(2.0, 4100));
+        List<DeltaRecord> found = engine.accept(timeReading(2.0, 4500));
+
+        assertEquals(1, found.size());
+        assertTrue(found.getFirst().pctChange() >= 25);
+    }
+
     private static Reading reading(double vibration, long ts) {
         return reading(vibration, ts, ts);
     }
@@ -165,5 +181,10 @@ class DiffEngineTest {
         double temperature = "tempC".equals(metric) ? value : Double.NaN;
         double rfPower = "rfPowerDb".equals(metric) ? value : Double.NaN;
         return new Reading("Bridge-A", "bridge", vibration, temperature, rfPower, timestamp, timestamp);
+    }
+
+    private static Reading timeReading(double vibration, long receiveTime) {
+        return new Reading("Bridge-A", "bridge", vibration, Double.NaN, Double.NaN,
+                receiveTime, receiveTime);
     }
 }

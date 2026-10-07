@@ -105,3 +105,14 @@
 - **Test evidence:** `DiffEngineTest` covers a deterministic +2% per-window
   drift and verifies an anomalous window leaves both references unchanged;
   `mvn -q test` passed.
+
+## B3: Optional elapsed-time windows
+
+- **What:** `diff.window-seconds=0` preserves the existing sample-count mode;
+  a positive value completes baseline and live windows by elapsed receive time.
+  Time-window samples are capped at 4096 per metric.
+- **Why:** Irregular source cadences should not imply a fixed sample duration.
+- **Files touched:** `DiffEngine`, `App`, application properties, tests, README.
+- **Test evidence:** Irregularly spaced samples complete the configured 2-second
+  windows and detect a shift; existing sample-mode tests remain green under
+  `mvn -q test`.
