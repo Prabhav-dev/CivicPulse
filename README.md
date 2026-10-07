@@ -27,9 +27,12 @@ export GEMINI_API_KEY="your-key"
 java -jar target/civicpulse.jar
 ```
 
-The project's `pom.xml` includes the existing `Yggdrasil-Blind_Storage` Java
-source tree as a Maven source root. Its source is not modified. The project
-builds a single shaded runnable jar.
+The root Maven project builds two local modules: `yggdrasil/` (the storage
+engine, with no runtime dependencies) and `civicpulse/` (the application).
+Yggdrasil's `Yggdrasil` package remains unchanged. The server jar excludes its
+Swing screens while retaining the small telemetry support class required by
+the engine. The separate `Yggdrasil-Blind_Storage/` checkout is not used by the
+build and is ignored so its nested Git history remains untouched.
 
 ## Configuration
 

@@ -13,8 +13,8 @@
 - **Network/API:** The baseline suite did not require a Gemini key. Offline
   dependency resolution has not yet been tested.
 - **Assumption:** The nested Yggdrasil working tree remains its own repository
-  and its Java package remains unchanged. Its tracked files will be included in
-  the outer project as source inputs without staging its `.git` metadata.
+  and its Java package remains unchanged. A standalone source copy is used by
+  the outer Maven build; the original checkout is not part of the build.
 
 ## A1: Non-blocking alert generation
 
@@ -164,3 +164,22 @@
 - **Test evidence:** Fake success, timeout, exception, and blank output; one
   warning across repeated failures; file-history restart round trip. `mvn -q
   test` passed with 34 tests at this checkpoint.
+
+## F: Multi-module build and hygiene
+
+- **What:** Replace the build-helper source root with parent, `yggdrasil`, and
+  `civicpulse` Maven modules. The storage module has no runtime dependencies;
+  the app shade excludes Swing screens. Five storage self-checks are JUnit 5
+  tests. Add MIT project license, contribution notes, optional CI, and route
+  documentation. The original nested checkout remains ignored and untouched.
+- **Why:** Provide a clean reactor build, real module boundary, and documented
+  reproducible validation without rewriting nested history.
+- **Files touched:** Parent/module POMs, `civicpulse/`, `yggdrasil/`, `.gitignore`,
+  removed `.gitmodules` pointer, `LICENSE`, `CONTRIBUTING.md`, CI, API docs,
+  README and changelog.
+- **Test evidence:** `mvn -q test` passed with 41 tests; `mvn -q package`
+  produced `target/civicpulse.jar`; jar inspection confirmed telemetry support
+  classes are present and Swing panels are absent.
+- **RunTests:** The original nested checkout remains unmodified, including its
+  legacy `RunTests` entry point. The standalone module's five named checks run
+  through JUnit under the root Maven reactor.

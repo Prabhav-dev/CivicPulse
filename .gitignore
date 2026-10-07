@@ -4,4 +4,4 @@ data/
 __pycache__/
 wget-log
 *.py[cod]
-/Yggdrasil-Blind_Storage/.git/
+/Yggdrasil-Blind_Storage/
