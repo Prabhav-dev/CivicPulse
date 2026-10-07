@@ -27,7 +27,14 @@ public final class App {
 
     public static void main(String[] args) {
         AppConfig config = new AppConfig();
-        Anonymizer anonymizer = new Anonymizer(config.get("anonymizer.salt", "demo-salt"));
+        String anonymizerSalt = config.get("anonymizer.salt", "change-this-demo-salt-before-deployment");
+        String yggdrasilKey = config.get("yggdrasil.key", "00112233445566778899aabbccddeeff");
+        boolean demoMode = config.getBoolean("app.demo", true);
+        if (!demoMode && ("change-this-demo-salt-before-deployment".equals(anonymizerSalt)
+                || "00112233445566778899aabbccddeeff".equals(yggdrasilKey))) {
+            throw new IllegalStateException("app.demo=false requires private anonymizer and Yggdrasil secrets");
+        }
+        Anonymizer anonymizer = new Anonymizer(anonymizerSalt, config.getInt("anonymizer.label-hex-length", 12));
         DeltaStore store = createStore(config);
         AlertService alertService = new AlertService(System.getenv("GEMINI_API_KEY"),
                 config.get("gemini.model", "gemini-3.8-flash"),
@@ -46,11 +53,15 @@ public final class App {
         CivicPulseService service = new CivicPulseService(anonymizer, diffEngine, store, alertService);
         SimulatedFleet fleet = new SimulatedFleet(anonymizer);
         TelemetrySource simulator = createSimulator(config, fleet);
+        String apiKey = config.get("api.key", null);
+        if (apiKey == null || apiKey.isBlank()) LOGGER.warn("CIVICPULSE_API_KEY is unset; mutation routes are unauthenticated");
         Javalin app;
         try {
                 app = CivicPulseRoutes.create(service, simulator, config.getInt("server.port", 7070),
                     config.getInt("request.max-body-bytes", 8192),
-                    config.getLong("ingest.timestamp-window-ms", 300_000));
+                config.getLong("ingest.timestamp-window-ms", 300_000),
+                config.get("server.host", "127.0.0.1"), apiKey,
+                config.getBoolean("sim.enabled", true) && demoMode);
         } catch (RuntimeException e) {
             service.close();
             throw e;
@@ -77,7 +88,7 @@ public final class App {
         if ("yggdrasil".equalsIgnoreCase(type)) {
             try {
                 return new YggdrasilDeltaStore(config.get("store.directory", "data/yggdrasil"),
-                        config.get("yggdrasil.key", "00112233445566778899aabbccddeeff"));
+                    config.get("yggdrasil.key", "00112233445566778899aabbccddeeff"));
             } catch (Exception e) {
                 String message = "Yggdrasil initialization failed: " + e.getMessage();
                 if (!config.getBoolean("store.fallback-to-memory", false)) {

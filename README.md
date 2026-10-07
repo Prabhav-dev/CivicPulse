@@ -34,6 +34,8 @@ builds a single shaded runnable jar.
 | Property | Default | Purpose |
 | --- | --- | --- |
 | `server.port` | `7070` | HTTP server port |
+| `server.host` | `127.0.0.1` | Bind address; loopback by default |
+| `app.demo` | `true` | Demo-mode switch; `false` requires private secrets and disables injection |
 | `request.max-body-bytes` | `8192` | Maximum streamed JSON request size |
 | `ingest.timestamp-window-ms` | `300000` | Timestamp window around server time; outside it, server time is used |
 | `store.type` | `memory` | `memory` or `yggdrasil` delta store |
@@ -42,6 +44,7 @@ builds a single shaded runnable jar.
 | `store.max-records` | `10000` | In-memory delta retention limit |
 | `yggdrasil.key` | demo key | 32 hex characters for the 16-byte Ascon key; replace for non-demo use |
 | `anonymizer.salt` | demo salt | HMAC salt used to create stable neutral labels; replace for non-demo use |
+| `anonymizer.label-hex-length` | `12` | HMAC label suffix length in hexadecimal characters (8–64) |
 | `diff.window-size` | `30` | Samples per metric window and baseline capacity |
 | `diff.window-seconds` | `0` | `0` uses sample-count windows; positive values use elapsed-time windows |
 | `diff.threshold-pct` | `25` | Minimum absolute percentage change |
@@ -74,6 +77,15 @@ java -Dstore.type=yggdrasil -jar target/civicpulse.jar
 Yggdrasil initialization errors stop startup by default. Use
 `-Dstore.fallback-to-memory=true` only when losing persistence for that run is
 acceptable.
+
+Secret precedence is environment variable, then Java system property, then
+`application.properties`. Set `CIVICPULSE_ANONYMIZER_SALT` and
+`CIVICPULSE_YGGDRASIL_KEY` for non-demo mode; `app.demo=false` refuses the
+checked-in demo values. Set optional `CIVICPULSE_API_KEY` to require the
+`X-API-Key` header on `POST /ingest`, `GET /deltas`, and `POST /sim/inject`.
+Without it, the app logs a warning and these mutation/inspection routes remain
+unauthenticated. Keep the default loopback bind unless you have added suitable
+network controls.
 
 `/status` reports server-received last-seen timestamps per metric; dropout
 checks run periodically even when a node stops sending completely. The expected
@@ -114,9 +126,12 @@ SimulatedFleet / GNU Radio
 - Gemini is the only external data flow. It receives only neutral node labels,
   metric names, percentage changes, and timestamps from stored deltas. Raw
   readings, MACs, serials, and location fields are not sent to it.
-- The checked-in anonymizer salt and Yggdrasil key are demo defaults; configure
-  private values before using the project with any non-synthetic data.
+- Sensor labels are keyed-HMAC pseudonyms, not anonymization. They are stable
+  and joinable under a secret salt; anyone who obtains that salt and a candidate
+  identifier can verify a match. Use a private salt and treat labels as
+  pseudonymous data. The checked-in salt and Yggdrasil key are demo defaults.
 - The per-process alert feed is not a separate durable event log. Deltas are
   durable only when `store.type=yggdrasil` is selected.
-- The backend has no authentication or TLS; keep the demo bound to a trusted
-  local network.
+- The API key is optional shared-secret access control, not full authentication
+  or authorization. There is no TLS; keep the demo bound to loopback or a
+  trusted local network.

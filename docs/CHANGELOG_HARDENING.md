@@ -130,3 +130,20 @@
 - **Test evidence:** Tests cover low-level constant-baseline perturbation and a
   stable-mean alternating shape change with localized patch position;
   `mvn -q test` passed.
+
+## C: Privacy and access controls
+
+- **What:** Resolve salt/key/API secret values as environment > JVM property >
+  properties file; refuse demo defaults with `app.demo=false`; lengthen labels
+  to configurable 12-hex HMAC pseudonyms; optionally require `X-API-Key` for
+  ingest, delta reads, and injection; bind to `127.0.0.1` by default and gate
+  simulator injection on demo/simulator enablement.
+- **Why:** Keep credentials out of source, reduce label collision risk, and
+  make local-only and optional access-control defaults explicit.
+- **Files touched:** `AppConfig`, `Anonymizer`, `App`, routes, properties,
+  README, and configuration/anonymizer/route tests.
+- **Test evidence:** `AppConfigTest`, `AnonymizerTest`, and live
+  `CivicPulseRoutesTest`; `mvn -q test` passed with 30 total tests at this
+  checkpoint.
+- **Privacy note:** Labels remain pseudonyms; a keyed HMAC label is not
+  irreversible anonymization.

@@ -11,12 +11,21 @@ import java.util.Map;
 
 public final class Anonymizer {
     private final byte[] salt;
+    private final int labelHexLength;
 
     public Anonymizer(String salt) {
+        this(salt, 12);
+    }
+
+    public Anonymizer(String salt, int labelHexLength) {
         if (salt == null || salt.isBlank()) {
             throw new IllegalArgumentException("Anonymizer salt must not be blank");
         }
+        if (labelHexLength < 8 || labelHexLength > 64) {
+            throw new IllegalArgumentException("Label length must be between 8 and 64 hexadecimal characters");
+        }
         this.salt = salt.getBytes(StandardCharsets.UTF_8);
+        this.labelHexLength = labelHexLength;
     }
 
     public Reading anonymize(Map<String, Object> raw) {
@@ -41,7 +50,8 @@ public final class Anonymizer {
                 case "streetlight" -> "Streetlight";
                 default -> "Sensor";
             };
-            return prefix + "-" + HexFormat.of().formatHex(digest, 0, 4).toUpperCase(Locale.ROOT);
+            String hex = HexFormat.of().formatHex(digest).substring(0, labelHexLength);
+            return prefix + "-" + hex.toUpperCase(Locale.ROOT);
         } catch (Exception e) {
             throw new IllegalStateException("Unable to pseudonymize sensor identity", e);
         }

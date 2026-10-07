@@ -11,6 +11,8 @@ import io.javalin.http.staticfiles.Location;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 public final class CivicPulseRoutes {
     private CivicPulseRoutes() { }
@@ -21,9 +23,17 @@ public final class CivicPulseRoutes {
 
     public static Javalin create(CivicPulseService service, TelemetrySource simulator, int port,
                                  int maxBodyBytes, long timestampWindowMs) {
+        return create(service, simulator, port, maxBodyBytes, timestampWindowMs,
+            "127.0.0.1", null, simulator != null);
+        }
+
+        public static Javalin create(CivicPulseService service, TelemetrySource simulator, int port,
+                     int maxBodyBytes, long timestampWindowMs, String bindAddress,
+                     String apiKey, boolean simulationEnabled) {
         Javalin app = Javalin.create(config -> config.staticFiles.add("/public", Location.CLASSPATH));
         app.get("/", ctx -> ctx.redirect("/index.html"));
         app.post("/ingest", ctx -> {
+            if (!authorize(ctx, apiKey)) return;
             try {
                 Map<String, Object> raw = RequestBodyReader.readJson(ctx.req().getInputStream(), maxBodyBytes);
                 Map<String, Object> validated = IngestValidator.validate(raw, System.currentTimeMillis(), timestampWindowMs);
@@ -55,6 +65,7 @@ public final class CivicPulseRoutes {
             ctx.json(result);
         });
         app.get("/deltas", ctx -> {
+            if (!authorize(ctx, apiKey)) return;
             String node = ctx.queryParam("node");
             if (node == null || node.isBlank()) {
                 ctx.status(400).json(Map.of("error", "node query parameter is required"));
@@ -63,7 +74,8 @@ public final class CivicPulseRoutes {
             ctx.json(service.readRecent(node, queryLimit(ctx.queryParam("limit"), 20)));
         });
         app.post("/sim/inject", ctx -> {
-            if (simulator == null) {
+            if (!authorize(ctx, apiKey)) return;
+            if (simulator == null || !simulationEnabled) {
                 ctx.status(409).json(Map.of("error", "simulator is disabled"));
                 return;
             }
@@ -89,7 +101,16 @@ public final class CivicPulseRoutes {
         app.exception(Exception.class, (error, ctx) -> {
             ctx.status(400).json(Map.of("error", "Invalid request"));
         });
-        return app.start(port);
+        return app.start(bindAddress, port);
+    }
+
+    private static boolean authorize(io.javalin.http.Context ctx, String expectedKey) {
+        if (expectedKey == null || expectedKey.isBlank()) return true;
+        String supplied = ctx.header("X-API-Key");
+        if (supplied != null && MessageDigest.isEqual(expectedKey.getBytes(StandardCharsets.UTF_8),
+                supplied.getBytes(StandardCharsets.UTF_8))) return true;
+        ctx.status(401).json(Map.of("error", "Valid X-API-Key header is required"));
+        return false;
     }
 
     private static int queryLimit(String value, int fallback) {

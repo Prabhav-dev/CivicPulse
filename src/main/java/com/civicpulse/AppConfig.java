@@ -2,12 +2,15 @@ package com.civicpulse;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Map;
 import java.util.Properties;
 
 public final class AppConfig {
     private final Properties values = new Properties();
+    private final Map<String, String> environment;
 
     public AppConfig() {
+        this.environment = System.getenv();
         try (InputStream input = AppConfig.class.getResourceAsStream("/application.properties")) {
             if (input != null) values.load(input);
         } catch (IOException e) {
@@ -15,7 +18,22 @@ public final class AppConfig {
         }
     }
 
+    AppConfig(Properties defaults, Map<String, String> environment) {
+        this.values.putAll(defaults);
+        this.environment = Map.copyOf(environment);
+    }
+
     public String get(String key, String fallback) {
+        String envName = switch (key) {
+            case "anonymizer.salt" -> "CIVICPULSE_ANONYMIZER_SALT";
+            case "yggdrasil.key" -> "CIVICPULSE_YGGDRASIL_KEY";
+            case "api.key" -> "CIVICPULSE_API_KEY";
+            default -> null;
+        };
+        if (envName != null) {
+            String envValue = environment.get(envName);
+            if (envValue != null && !envValue.isBlank()) return envValue;
+        }
         return System.getProperty(key, values.getProperty(key, fallback));
     }
 

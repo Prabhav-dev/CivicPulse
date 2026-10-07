@@ -49,4 +49,13 @@ class AnonymizerTest {
                 () -> anonymizer.anonymize(Map.of("nodeType", "bridge", "mac", " ", "deviceSerial", "")));
         assertEquals(missing.getMessage(), blank.getMessage());
     }
+
+    @Test
+    void labelLengthIsConfigurableAndDefaultsToTwelveHexCharacters() {
+        Reading defaultLength = anonymizer.anonymize(Map.of("nodeType", "bridge", "mac", "A1"));
+        Reading customLength = new Anonymizer("test-salt", 16)
+                .anonymize(Map.of("nodeType", "bridge", "mac", "A1"));
+        assertEquals(12, defaultLength.nodeLabel().substring(defaultLength.nodeLabel().indexOf('-') + 1).length());
+        assertEquals(16, customLength.nodeLabel().substring(customLength.nodeLabel().indexOf('-') + 1).length());
+    }
 }
