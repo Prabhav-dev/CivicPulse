@@ -1,7 +1,7 @@
 package com.civicpulse;
 
 import com.civicpulse.alert.Alert;
-import com.civicpulse.alert.AlertService;
+import com.civicpulse.alert.AlertGenerator;
 import com.civicpulse.anonymize.Anonymizer;
 import com.civicpulse.diff.DiffEngine;
 import com.civicpulse.model.DeltaRecord;
@@ -13,38 +13,73 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class CivicPulseService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CivicPulseService.class);
     private final Anonymizer anonymizer;
     private final DiffEngine diffEngine;
     private final DeltaStore store;
-    private final AlertService alertService;
+    private final AlertGenerator alertGenerator;
     private final Deque<Alert> alerts = new ArrayDeque<>();
+    private final Object alertsLock = new Object();
+    private final Object stateLock = new Object();
+    private final AtomicBoolean queueOverflowLogged = new AtomicBoolean();
+    private final AtomicBoolean closed = new AtomicBoolean();
+    private final ThreadPoolExecutor alertWorker = new ThreadPoolExecutor(
+            1, 1, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(256), task -> {
+                Thread thread = new Thread(task, "civicpulse-alert-worker");
+                thread.setDaemon(true);
+                return thread;
+            }, new ThreadPoolExecutor.AbortPolicy());
 
     public CivicPulseService(Anonymizer anonymizer, DiffEngine diffEngine,
-                             DeltaStore store, AlertService alertService) {
+                             DeltaStore store, AlertGenerator alertGenerator) {
         this.anonymizer = anonymizer;
         this.diffEngine = diffEngine;
         this.store = store;
-        this.alertService = alertService;
+        this.alertGenerator = alertGenerator;
     }
 
-    public synchronized List<DeltaRecord> ingest(Map<String, Object> raw) {
+    public List<DeltaRecord> ingest(Map<String, Object> raw) {
         Reading reading = anonymizer.anonymize(raw);
-        List<DeltaRecord> deltas = diffEngine.accept(reading);
+        List<DeltaRecord> deltas;
+        synchronized (stateLock) {
+            deltas = diffEngine.accept(reading);
+            for (DeltaRecord delta : deltas) store.append(delta);
+        }
         for (DeltaRecord delta : deltas) {
-            store.append(delta);
-            Alert alert = alertService.create(delta, store.readRecent(delta.nodeLabel(), 5));
-            alerts.addLast(alert);
-            while (alerts.size() > 200) alerts.removeFirst();
+            try {
+                alertWorker.execute(() -> createAndPublish(delta));
+            } catch (RejectedExecutionException e) {
+                if (queueOverflowLogged.compareAndSet(false, true)) {
+                    LOGGER.error("Alert queue is full; additional alert-generation jobs will be dropped");
+                }
+            }
         }
         return deltas;
     }
 
-    public synchronized List<Alert> recentAlerts(int limit) {
-        int boundedLimit = Math.max(0, Math.min(limit, alerts.size()));
-        List<Alert> result = new ArrayList<>(alerts);
-        return List.copyOf(result.subList(result.size() - boundedLimit, result.size()));
+    private void createAndPublish(DeltaRecord delta) {
+        Alert alert = alertGenerator.create(delta, store.readRecent(delta.nodeLabel(), 5));
+        synchronized (alertsLock) {
+            alerts.addLast(alert);
+            while (alerts.size() > 200) alerts.removeFirst();
+        }
+    }
+
+    public List<Alert> recentAlerts(int limit) {
+        synchronized (alertsLock) {
+            int boundedLimit = Math.max(0, Math.min(limit, alerts.size()));
+            List<Alert> result = new ArrayList<>(alerts);
+            return List.copyOf(result.subList(result.size() - boundedLimit, result.size()));
+        }
     }
 
     public Map<String, DiffEngine.NodeSnapshot> status() {
@@ -56,7 +91,15 @@ public final class CivicPulseService {
     }
 
     public void close() {
-        alertService.close();
+        if (!closed.compareAndSet(false, true)) return;
+        alertWorker.shutdown();
+        try {
+            if (!alertWorker.awaitTermination(6, TimeUnit.SECONDS)) alertWorker.shutdownNow();
+        } catch (InterruptedException e) {
+            alertWorker.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+        alertGenerator.close();
         store.close();
     }
 }

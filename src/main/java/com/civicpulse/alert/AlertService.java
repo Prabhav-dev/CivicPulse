@@ -12,11 +12,12 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public final class AlertService implements AutoCloseable {
+public final class AlertService implements AlertGenerator, AutoCloseable {
     private final String apiKey;
     private final String model;
     private final long timeoutMs;
     private final TemplateAlertFallback fallback;
+    private volatile Client client;
     private final ExecutorService requests = Executors.newCachedThreadPool(task -> {
         Thread thread = new Thread(task, "civicpulse-gemini");
         thread.setDaemon(true);
@@ -30,13 +31,12 @@ public final class AlertService implements AutoCloseable {
         this.fallback = fallback;
     }
 
+    @Override
     public Alert create(DeltaRecord latest, List<DeltaRecord> recent) {
         if (apiKey == null || apiKey.isBlank()) return fallback.create(latest);
         Future<String> request = requests.submit(() -> {
-            Client client = Client.builder().apiKey(apiKey)
-                    .httpOptions(HttpOptions.builder().timeout((int) timeoutMs).build()).build();
             String prompt = prompt(recent);
-            return client.models.generateContent(model, prompt, null).text();
+            return client().models.generateContent(model, prompt, null).text();
         });
         try {
             String text = request.get(timeoutMs, TimeUnit.MILLISECONDS);
@@ -50,6 +50,21 @@ public final class AlertService implements AutoCloseable {
             request.cancel(true);
             return fallback.create(latest);
         }
+    }
+
+    private Client client() {
+        Client current = client;
+        if (current == null) {
+            synchronized (this) {
+                current = client;
+                if (current == null) {
+                    current = Client.builder().apiKey(apiKey)
+                            .httpOptions(HttpOptions.builder().timeout((int) timeoutMs).build()).build();
+                    client = current;
+                }
+            }
+        }
+        return current;
     }
 
     private static String prompt(List<DeltaRecord> records) {
