@@ -48,3 +48,12 @@
   time, and subsequent dropout; `AlertServiceTest` verifies no-data wording.
 - **Assumption:** Dropout timing uses `diff.expected-interval-ms`, not simulator
   time compression, so external telemetry sources can configure their cadence.
+
+## A3: Require a device identity
+
+- **What:** Reject ingestion when both `mac` and `deviceSerial` are missing or
+  blank, with a clear HTTP 400 error. No fallback identity is derived from the
+  node type.
+- **Why:** Identity-less devices of one type must not silently merge.
+- **Files touched:** `Anonymizer`, `CivicPulseRoutes`, `AnonymizerTest`, README.
+- **Test evidence:** `mvn -q test` covers both absent and blank identities.

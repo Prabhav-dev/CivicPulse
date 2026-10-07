@@ -66,6 +66,8 @@ interval is configurable and independent of simulator time compression.
 
 HTTP routes: `POST /ingest`, `GET /alerts?limit=20`, `GET /status`,
 `POST /sim/inject`, and `GET /deltas?node=<neutral-label>&limit=20`.
+`POST /ingest` requires a non-blank `mac` or `deviceSerial`; identity-less
+payloads receive HTTP 400 instead of being merged into a shared node.
 
 ## Architecture
 

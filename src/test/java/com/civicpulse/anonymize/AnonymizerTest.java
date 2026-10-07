@@ -38,4 +38,15 @@ class AnonymizerTest {
         assertTrue(Double.isNaN(reading.vibrationRms()));
         assertTrue(Double.isNaN(reading.tempC()));
     }
+
+    @Test
+    void rejectsMissingOrBlankDeviceIdentity() {
+        IllegalArgumentException missing = assertThrows(IllegalArgumentException.class,
+                () -> anonymizer.anonymize(Map.of("nodeType", "bridge")));
+        assertEquals("mac or deviceSerial is required to identify a sensor", missing.getMessage());
+
+        IllegalArgumentException blank = assertThrows(IllegalArgumentException.class,
+                () -> anonymizer.anonymize(Map.of("nodeType", "bridge", "mac", " ", "deviceSerial", "")));
+        assertEquals(missing.getMessage(), blank.getMessage());
+    }
 }

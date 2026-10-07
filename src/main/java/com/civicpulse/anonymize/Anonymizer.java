@@ -21,8 +21,8 @@ public final class Anonymizer {
 
     public Reading anonymize(Map<String, Object> raw) {
         String type = normalizedType(raw.get("nodeType"));
-        Object identity = firstPresent(raw, "mac", "deviceSerial");
-        String label = label(type, identity == null ? type : identity.toString());
+        String identity = identity(raw);
+        String label = label(type, identity);
         return new Reading(label, type,
                 number(raw.get("vibrationRms")),
                 number(raw.get("tempC")),
@@ -56,9 +56,12 @@ public final class Anonymizer {
         };
     }
 
-    private static Object firstPresent(Map<String, Object> values, String first, String second) {
-        Object value = values.get(first);
-        return value == null ? values.get(second) : value;
+    private static String identity(Map<String, Object> values) {
+        for (String field : new String[]{"mac", "deviceSerial"}) {
+            Object value = values.get(field);
+            if (value != null && !value.toString().isBlank()) return value.toString();
+        }
+        throw new IllegalArgumentException("mac or deviceSerial is required to identify a sensor");
     }
 
     private static double number(Object value) {

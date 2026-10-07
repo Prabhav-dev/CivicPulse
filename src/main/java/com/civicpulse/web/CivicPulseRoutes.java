@@ -18,7 +18,11 @@ public final class CivicPulseRoutes {
         app.get("/", ctx -> ctx.redirect("/index.html"));
         app.post("/ingest", ctx -> {
             Map<String, Object> raw = ctx.bodyAsClass(Map.class);
-            ctx.json(Map.of("accepted", true, "deltas", service.ingest(raw)));
+            try {
+                ctx.json(Map.of("accepted", true, "deltas", service.ingest(raw)));
+            } catch (IllegalArgumentException e) {
+                ctx.status(400).json(Map.of("error", e.getMessage()));
+            }
         });
         app.get("/alerts", ctx -> {
             int limit = queryLimit(ctx.queryParam("limit"), 20);
