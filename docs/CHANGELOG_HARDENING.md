@@ -216,3 +216,26 @@
   `SimulatedFleet` clock injection; this changelog.
 - **Test evidence:** At this checkpoint `mvn -q test` passed with 50 tests,
   0 failures, 0 errors, 0 skipped. The command counts both Maven modules.
+
+## H: Evaluation harness — deferred
+
+- **Status:** Not implemented or run. The user requested that evaluation stop
+  for now; no false-positive, detection-rate, or latency numbers are claimed.
+- **Reason:** Avoid spending the remaining task budget on evaluation while the
+  user needs the workspace available for other Ubuntu work.
+- **Next action:** When resumed, run a deterministic local harness, record the
+  exact command and source commit hash, and only then publish measured values in
+  `docs/EVALUATION.md` and the presentation.
+
+## I: Presentation alignment
+
+- **What:** Correct the problem framing, transport status, detector explanation,
+  privacy claims, alert wording, and limitations/roadmap copy. Update the demo
+  to include dropout and gradual sensor drift. Leave the results table explicitly
+  pending because Phase H was deferred.
+- **Files touched:** `docs/SLIDES_UPDATE.md`, `DEMO.md`, README, changelog.
+- **Evidence:** Deck text extracted locally with `pdftotext -layout`; the
+  replacement copy distinguishes implemented HTTP from future LoRaWAN/MQTT and
+  makes no unmeasured performance claims.
+- **Verification:** `mvn -o -q verify` passed with 50 tests, 0 failures,
+  0 errors, 0 skipped, without network access or a Gemini key.

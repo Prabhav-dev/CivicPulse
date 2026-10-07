@@ -11,9 +11,11 @@ Requires Java 21 or newer and Maven. From this directory:
 
 ```sh
 mvn -q test
-mvn package
+mvn -q package
 java -jar target/civicpulse.jar
 ```
+
+After dependencies have been cached, the offline gate is `mvn -o -q verify`.
 
 Open [http://localhost:7070](http://localhost:7070). The default fleet is
 simulated and sends readings to the local HTTP endpoint. Without
@@ -52,7 +54,7 @@ build and is ignored so its nested Git history remains untouched.
 | `anonymizer.label-hex-length` | `12` | HMAC label suffix length in hexadecimal characters (8–64) |
 | `diff.window-size` | `30` | Samples per metric window and baseline capacity |
 | `diff.window-seconds` | `0` | `0` uses sample-count windows; positive values use elapsed-time windows |
-| `diff.threshold-pct` | `25` | Minimum absolute percentage change |
+| `diff.threshold-pct` | `25` | Backward-compatible fallback for percentage-mode thresholds |
 | `diff.vibrationRms.mode` / `.threshold` | `percent` / `25` | Vibration threshold; legacy `diff.threshold-pct` remains the fallback |
 | `diff.tempC.mode` / `.threshold` | `absolute` / `4.0` | Temperature threshold in °C |
 | `diff.rfPowerDb.mode` / `.threshold` | `absolute` / `6.0` | RF threshold in relative dB |
@@ -147,3 +149,9 @@ SimulatedFleet / GNU Radio
 - The API key is optional shared-secret access control, not full authentication
   or authorization. There is no TLS; keep the demo bound to loopback or a
   trusted local network.
+- Evaluation metrics are not yet published. Do not infer false-positive rates
+  or detection latency from the demo; those require a recorded evaluation run.
+
+The current presentation corrections are collected in
+[`docs/SLIDES_UPDATE.md`](docs/SLIDES_UPDATE.md). Evaluation is pending and no
+performance figures are claimed.
