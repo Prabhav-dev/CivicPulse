@@ -68,19 +68,24 @@ public final class App {
         LOGGER.info("CivicPulse listening on http://localhost:{}", config.getInt("server.port", 7070));
     }
 
-    private static DeltaStore createStore(AppConfig config) {
+    static DeltaStore createStore(AppConfig config) {
         String type = config.get("store.type", "memory");
         if ("yggdrasil".equalsIgnoreCase(type)) {
             try {
                 return new YggdrasilDeltaStore(config.get("store.directory", "data/yggdrasil"),
                         config.get("yggdrasil.key", "00112233445566778899aabbccddeeff"));
             } catch (Exception e) {
-                LOGGER.error("Yggdrasil initialization failed; using in-memory storage for this run", e);
+                String message = "Yggdrasil initialization failed: " + e.getMessage();
+                if (!config.getBoolean("store.fallback-to-memory", false)) {
+                    throw new IllegalStateException(message, e);
+                }
+                LOGGER.error(message + "; explicit memory fallback is enabled", e);
+                return new InMemoryDeltaStore(config.getInt("store.max-records", 10_000));
             }
-        } else if (!"memory".equalsIgnoreCase(type)) {
-            LOGGER.warn("Unknown store.type '{}'; using memory", type);
+        } else if ("memory".equalsIgnoreCase(type)) {
+            return new InMemoryDeltaStore(config.getInt("store.max-records", 10_000));
         }
-        return new InMemoryDeltaStore(config.getInt("store.max-records", 10_000));
+        throw new IllegalArgumentException("Unsupported store.type: " + type);
     }
 
     private static TelemetrySource createSimulator(AppConfig config, SimulatedFleet fleet) {

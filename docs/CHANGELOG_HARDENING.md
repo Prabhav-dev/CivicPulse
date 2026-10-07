@@ -71,3 +71,14 @@
 - **Test evidence:** `IngestValidationTest` covers oversize, finite/range,
   optional metrics, and timestamp normalization; `DiffEngineTest` covers cap
   rejection and TTL eviction. `mvn -q test` passed.
+
+## A5: Fail fast on storage configuration
+
+- **What:** `store.type=yggdrasil` now stops initialization with a readable
+  exception unless `store.fallback-to-memory=true` is explicitly selected.
+  Unknown store types are rejected rather than silently becoming memory mode.
+- **Why:** A requested durable store must not degrade unnoticed.
+- **Files touched:** `App`, `application.properties`, `AppStoreConfigTest`,
+  README.
+- **Test evidence:** `AppStoreConfigTest` verifies malformed key startup failure
+  and the explicit memory-fallback opt-in; `mvn -q test` passed.

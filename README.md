@@ -37,6 +37,7 @@ builds a single shaded runnable jar.
 | `request.max-body-bytes` | `8192` | Maximum streamed JSON request size |
 | `ingest.timestamp-window-ms` | `300000` | Timestamp window around server time; outside it, server time is used |
 | `store.type` | `memory` | `memory` or `yggdrasil` delta store |
+| `store.fallback-to-memory` | `false` | Explicitly allow memory fallback if Yggdrasil startup fails |
 | `store.directory` | `data/yggdrasil` | Yggdrasil database and WAL directory |
 | `store.max-records` | `10000` | In-memory delta retention limit |
 | `yggdrasil.key` | demo key | 32 hex characters for the 16-byte Ascon key; replace for non-demo use |
@@ -63,6 +64,9 @@ Properties can be overridden with Java system properties, for example
 ```sh
 java -Dstore.type=yggdrasil -jar target/civicpulse.jar
 ```
+Yggdrasil initialization errors stop startup by default. Use
+`-Dstore.fallback-to-memory=true` only when losing persistence for that run is
+acceptable.
 
 `/status` reports server-received last-seen timestamps per metric; dropout
 checks run periodically even when a node stops sending completely. The expected
