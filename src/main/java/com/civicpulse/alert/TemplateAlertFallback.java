@@ -13,6 +13,13 @@ public final class TemplateAlertFallback {
                 return new Alert(record.nodeLabel(), record.metric(), 0, record.ts(), text, "TEMPLATE",
                     0, "absolute", "DROPOUT");
         }
+                if ("SHAPE_CHANGE".equals(record.kind())) {
+                    String text = String.format(Locale.ROOT,
+                        "%s shows a sustained change in the %s reading pattern while its window mean remains close to baseline. Inspect the sensor and review recent operating conditions.",
+                        record.nodeLabel(), record.metric());
+                    return new Alert(record.nodeLabel(), record.metric(), record.pctChange(), record.ts(), text,
+                        "TEMPLATE", record.absoluteChange(), record.mode(), record.kind());
+                }
             if ("absolute".equals(record.mode())) {
                 String unit = "tempC".equals(record.metric()) ? "°C" : "dB";
                 String text = String.format(Locale.ROOT,

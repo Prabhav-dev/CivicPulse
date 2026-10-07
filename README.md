@@ -50,6 +50,7 @@ builds a single shaded runnable jar.
 | `diff.rfPowerDb.mode` / `.threshold` | `absolute` / `6.0` | RF threshold in relative dB |
 | `diff.long-term-alpha` | `0.001` | EWMA reference update rate, applied only to quiet windows |
 | `diff.long-term-threshold-scale` | `1.0` | Multiplier on each metric's threshold for long-term drift |
+| `diff.shape-change-fraction` | `0.5` | Fraction of changed quantized positions to report a stable-mean shape change |
 | `diff.persistence-windows` | `2` | Consecutive anomalous windows before raising an alert |
 | `diff.cooldown-ms` | `60000` | Per-node/metric alert cooldown |
 | `diff.dropout-intervals` | `5` | Missed expected intervals before a per-metric dropout event |
@@ -84,6 +85,8 @@ HTTP routes: `POST /ingest`, `GET /alerts?limit=20`, `GET /status`,
 payloads receive HTTP 400 instead of being merged into a shared node.
 
 ## Architecture
+
+Detection details and known algorithm limits are in [docs/DETECTION.md](docs/DETECTION.md).
 
 ```text
 SimulatedFleet / GNU Radio

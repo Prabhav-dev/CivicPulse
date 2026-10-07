@@ -116,3 +116,17 @@
 - **Test evidence:** Irregularly spaced samples complete the configured 2-second
   windows and detect a shift; existing sample-mode tests remain green under
   `mvn -q test`.
+
+## B4: Honest Myers-diff role
+
+- **What:** The first Myers target-change position localizes sequence divergence.
+  A separate symbol-position fraction can flag stable-mean shape changes.
+  Constant baselines now use a 5%-of-mean / 0.01 scale floor, and the unused
+  cooldown-branch position local was removed.
+- **Why:** Separate structural sequence evidence from mean magnitude and avoid
+  explosive z-scores when baseline standard deviation is zero.
+- **Files touched:** `DiffEngine`, `TemplateAlertFallback`, `App`, properties,
+  tests, `docs/DETECTION.md`, README.
+- **Test evidence:** Tests cover low-level constant-baseline perturbation and a
+  stable-mean alternating shape change with localized patch position;
+  `mvn -q test` passed.

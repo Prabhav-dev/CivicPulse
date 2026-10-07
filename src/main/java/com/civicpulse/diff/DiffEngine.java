@@ -26,6 +26,7 @@ public final class DiffEngine {
     private final double longTermAlpha;
     private final double longTermThresholdScale;
     private final long windowSeconds;
+    private final double shapeChangeFraction;
     private final Map<String, Map<String, MetricState>> states = new LinkedHashMap<>();
     private final Map<String, Reading> latestReadings = new LinkedHashMap<>();
 
@@ -66,11 +67,22 @@ public final class DiffEngine {
                               long cooldownMs, int dropoutIntervals, long expectedIntervalMs,
                               int maxNodes, long nodeTtlMs, Map<String, Threshold> thresholds,
                               double longTermAlpha, double longTermThresholdScale, long windowSeconds) {
+                        this(windowSize, thresholdPct, persistenceWindows, cooldownMs, dropoutIntervals,
+                            expectedIntervalMs, maxNodes, nodeTtlMs, thresholds, longTermAlpha,
+                            longTermThresholdScale, windowSeconds, 0.5);
+                        }
+
+                        public DiffEngine(int windowSize, double thresholdPct, int persistenceWindows,
+                                  long cooldownMs, int dropoutIntervals, long expectedIntervalMs,
+                                  int maxNodes, long nodeTtlMs, Map<String, Threshold> thresholds,
+                                  double longTermAlpha, double longTermThresholdScale, long windowSeconds,
+                                  double shapeChangeFraction) {
         if (windowSize < 2 || thresholdPct < 0 || persistenceWindows < 1 || cooldownMs < 0
                     || dropoutIntervals < 1 || expectedIntervalMs < 1 || maxNodes < 1 || nodeTtlMs < 1
                     || !Double.isFinite(longTermAlpha) || longTermAlpha <= 0 || longTermAlpha > 1
                         || !Double.isFinite(longTermThresholdScale) || longTermThresholdScale < 0
-                        || windowSeconds < 0 || windowSeconds > Long.MAX_VALUE / 1000) {
+                            || windowSeconds < 0 || windowSeconds > Long.MAX_VALUE / 1000
+                            || !Double.isFinite(shapeChangeFraction) || shapeChangeFraction < 0 || shapeChangeFraction > 1) {
             throw new IllegalArgumentException("Invalid diff-engine configuration");
         }
         this.windowSize = windowSize;
@@ -85,6 +97,7 @@ public final class DiffEngine {
         this.longTermAlpha = longTermAlpha;
         this.longTermThresholdScale = longTermThresholdScale;
         this.windowSeconds = windowSeconds;
+        this.shapeChangeFraction = shapeChangeFraction;
     }
 
     public synchronized List<DeltaRecord> accept(Reading reading) {
@@ -212,9 +225,11 @@ public final class DiffEngine {
             boolean longExceeded = Double.isFinite(longTermReference)
                     && Math.abs(longChange) >= threshold.value() * longTermThresholdScale;
                 boolean thresholdAnomaly = shortExceeded || longExceeded;
-            Patch<String> patch = DiffUtils.diff(symbols(baseline, baselineMean, stddev(baseline)),
-                    symbols(live, baselineMean, stddev(baseline)));
-                boolean candidate = !patch.getDeltas().isEmpty() && thresholdAnomaly;
+                List<String> baselineSymbols = symbols(baseline, baselineMean, stddev(baseline));
+                List<String> liveSymbols = symbols(live, baselineMean, stddev(baseline));
+                Patch<String> patch = DiffUtils.diff(baselineSymbols, liveSymbols);
+                boolean shapeChanged = !thresholdAnomaly && isShapeChange(baselineSymbols, liveSymbols);
+                boolean candidate = !patch.getDeltas().isEmpty() && (thresholdAnomaly || shapeChanged);
             boolean useLongReference = longExceeded && !shortExceeded;
             double absoluteChange = useLongReference ? longAbsoluteChange : shortAbsoluteChange;
             double pctChange = useLongReference ? longPctChange : shortPctChange;
@@ -239,7 +254,6 @@ public final class DiffEngine {
             boolean coolingDown = lastAlertTs != Long.MIN_VALUE && reading.ts() - lastAlertTs < cooldownMs;
             if (consecutiveCandidates < persistenceWindows || coolingDown) {
                 if (consecutiveCandidates >= persistenceWindows) {
-                    int position = patch.getDeltas().get(0).getTarget().getPosition();
                     live.clear();
                     liveStartTs = Long.MIN_VALUE;
                     return null;
@@ -253,7 +267,7 @@ public final class DiffEngine {
             live.clear();
             liveStartTs = Long.MIN_VALUE;
                 return new DeltaRecord(reading.nodeLabel(), metric, pctChange, position, reading.ts(),
-                    "SHIFT", absoluteChange, threshold.mode());
+                    shapeChanged ? "SHAPE_CHANGE" : "SHIFT", absoluteChange, threshold.mode());
         }
 
         private boolean baselineWindowComplete(long now) {
@@ -305,7 +319,7 @@ public final class DiffEngine {
     }
 
     private static List<String> symbols(Iterable<Double> values, double mean, double stddev) {
-        double scale = Math.max(stddev, 1.0e-9);
+        double scale = Math.max(stddev, Math.max(Math.abs(mean) * 0.05, 0.01));
         List<String> result = new ArrayList<>();
         for (double value : values) {
             double z = (value - mean) / scale;
@@ -315,6 +329,15 @@ public final class DiffEngine {
             else result.add("NORMAL");
         }
         return result;
+    }
+
+    private boolean isShapeChange(List<String> baselineSymbols, List<String> liveSymbols) {
+        if (baselineSymbols.isEmpty() || baselineSymbols.size() != liveSymbols.size()) return false;
+        int changed = 0;
+        for (int i = 0; i < baselineSymbols.size(); i++) {
+            if (!baselineSymbols.get(i).equals(liveSymbols.get(i))) changed++;
+        }
+        return (double) changed / baselineSymbols.size() >= shapeChangeFraction;
     }
 
     private static double mean(Iterable<Double> values) {

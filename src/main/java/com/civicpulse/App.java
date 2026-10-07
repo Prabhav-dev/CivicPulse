@@ -41,7 +41,8 @@ public final class App {
                 config.getInt("diff.max-nodes", 500), config.getLong("diff.node-ttl-ms", 3_600_000),
                 thresholds(config), config.getDouble("diff.long-term-alpha", 0.001),
                 config.getDouble("diff.long-term-threshold-scale", 1.0),
-                config.getLong("diff.window-seconds", 0));
+                config.getLong("diff.window-seconds", 0),
+                config.getDouble("diff.shape-change-fraction", 0.5));
         CivicPulseService service = new CivicPulseService(anonymizer, diffEngine, store, alertService);
         SimulatedFleet fleet = new SimulatedFleet(anonymizer);
         TelemetrySource simulator = createSimulator(config, fleet);

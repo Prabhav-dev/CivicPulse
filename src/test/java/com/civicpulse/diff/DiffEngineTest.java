@@ -159,6 +159,32 @@ class DiffEngineTest {
         assertTrue(found.getFirst().pctChange() >= 25);
     }
 
+    @Test
+    void smallConstantBaselineDeviationDoesNotTurnEverySymbolHigh() {
+        DiffEngine engine = metricEngine("vibrationRms", "percent", 25);
+        for (int i = 0; i < 2; i++) engine.accept(metricReading("vibrationRms", 1.0, i));
+        engine.accept(metricReading("vibrationRms", 1.03, 2));
+        List<DeltaRecord> found = engine.accept(metricReading("vibrationRms", 1.03, 3));
+
+        assertTrue(found.isEmpty());
+    }
+
+    @Test
+    void shapeChangeUsesMyersFirstChangedPositionWhenMeanIsStable() {
+        DiffEngine engine = new DiffEngine(4, 25, 1, 0, 5, 1000, 500, 3_600_000,
+                java.util.Map.of("tempC", new DiffEngine.Threshold("absolute", 4.0)), 0.001, 1.0, 0, 0.5);
+        for (int i = 0; i < 4; i++) engine.accept(metricReading("tempC", 1.0, i));
+        engine.accept(metricReading("tempC", 0.2, 4));
+        engine.accept(metricReading("tempC", 1.8, 5));
+        engine.accept(metricReading("tempC", 0.2, 6));
+        List<DeltaRecord> found = engine.accept(metricReading("tempC", 1.8, 7));
+
+        assertEquals(1, found.size());
+        assertEquals("SHAPE_CHANGE", found.getFirst().kind());
+        assertEquals(0.0, found.getFirst().absoluteChange(), 0.001);
+        assertTrue(found.getFirst().position() >= 0 && found.getFirst().position() < 4);
+    }
+
     private static Reading reading(double vibration, long ts) {
         return reading(vibration, ts, ts);
     }
