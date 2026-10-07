@@ -21,6 +21,7 @@ public final class DiffEngine {
     private final long expectedIntervalMs;
     private final int maxNodes;
     private final long nodeTtlMs;
+    private final Map<String, Threshold> thresholds;
     private final Map<String, Map<String, MetricState>> states = new LinkedHashMap<>();
     private final Map<String, Reading> latestReadings = new LinkedHashMap<>();
 
@@ -37,6 +38,13 @@ public final class DiffEngine {
         public DiffEngine(int windowSize, double thresholdPct, int persistenceWindows,
                   long cooldownMs, int dropoutIntervals, long expectedIntervalMs,
                   int maxNodes, long nodeTtlMs) {
+            this(windowSize, thresholdPct, persistenceWindows, cooldownMs, dropoutIntervals,
+                expectedIntervalMs, maxNodes, nodeTtlMs, percentThresholds(thresholdPct));
+            }
+
+            public DiffEngine(int windowSize, double thresholdPct, int persistenceWindows,
+                      long cooldownMs, int dropoutIntervals, long expectedIntervalMs,
+                      int maxNodes, long nodeTtlMs, Map<String, Threshold> thresholds) {
         if (windowSize < 2 || thresholdPct < 0 || persistenceWindows < 1 || cooldownMs < 0
             || dropoutIntervals < 1 || expectedIntervalMs < 1 || maxNodes < 1 || nodeTtlMs < 1) {
             throw new IllegalArgumentException("Invalid diff-engine configuration");
@@ -49,6 +57,7 @@ public final class DiffEngine {
         this.expectedIntervalMs = expectedIntervalMs;
         this.maxNodes = maxNodes;
         this.nodeTtlMs = nodeTtlMs;
+        this.thresholds = Map.copyOf(thresholds);
     }
 
     public synchronized List<DeltaRecord> accept(Reading reading) {
@@ -136,7 +145,8 @@ public final class DiffEngine {
                 && now - lastDropoutAlertTs < cooldownMs;
             if (coolingDown) return null;
             lastDropoutAlertTs = now;
-            return new DeltaRecord(nodeLabel, metric, 0, Math.max(0, baseline.size() - 1), now, "DROPOUT");
+                return new DeltaRecord(nodeLabel, metric, 0, Math.max(0, baseline.size() - 1), now,
+                    "DROPOUT", 0, "absolute");
         }
 
         private boolean isStale(long now) {
@@ -155,10 +165,13 @@ public final class DiffEngine {
             if (live.size() < windowSize) return null;
             double baselineMean = mean(baseline);
             double liveMean = mean(live);
-            double pctChange = 100.0 * (liveMean - baselineMean) / denominator(metric, baselineMean);
+                double absoluteChange = liveMean - baselineMean;
+                double pctChange = 100.0 * absoluteChange / denominator(metric, baselineMean);
+                Threshold threshold = thresholds.getOrDefault(metric, new Threshold("percent", thresholdPct));
+                double thresholdValue = "absolute".equals(threshold.mode()) ? absoluteChange : pctChange;
             Patch<String> patch = DiffUtils.diff(symbols(baseline, baselineMean, stddev(baseline)),
                     symbols(live, baselineMean, stddev(baseline)));
-            boolean candidate = !patch.getDeltas().isEmpty() && Math.abs(pctChange) >= thresholdPct;
+                boolean candidate = !patch.getDeltas().isEmpty() && Math.abs(thresholdValue) >= threshold.value();
 
             if (!candidate) {
                 consecutiveCandidates = 0;
@@ -181,7 +194,8 @@ public final class DiffEngine {
             lastAlertTs = reading.ts();
             int position = patch.getDeltas().get(0).getTarget().getPosition();
             live.clear();
-            return new DeltaRecord(reading.nodeLabel(), metric, pctChange, position, reading.ts());
+                return new DeltaRecord(reading.nodeLabel(), metric, pctChange, position, reading.ts(),
+                    "SHIFT", absoluteChange, threshold.mode());
         }
     }
 
@@ -246,4 +260,21 @@ public final class DiffEngine {
     public record MetricStats(double baselineMean, double baselineStdDev, int sampleCount,
                               double latestValue, long lastSeenTs, boolean stale) { }
     public record NodeSnapshot(Reading latestReading, Map<String, MetricStats> metrics) { }
+
+    private static Map<String, Threshold> percentThresholds(double thresholdPct) {
+        return Map.of("vibrationRms", new Threshold("percent", thresholdPct),
+                "tempC", new Threshold("percent", thresholdPct),
+                "rfPowerDb", new Threshold("percent", thresholdPct));
+    }
+
+    public record Threshold(String mode, double value) {
+        public Threshold {
+            if (!"percent".equals(mode) && !"absolute".equals(mode)) {
+                throw new IllegalArgumentException("Threshold mode must be percent or absolute");
+            }
+            if (!Double.isFinite(value) || value < 0) {
+                throw new IllegalArgumentException("Threshold value must be finite and non-negative");
+            }
+        }
+    }
 }

@@ -44,6 +44,9 @@ builds a single shaded runnable jar.
 | `anonymizer.salt` | demo salt | HMAC salt used to create stable neutral labels; replace for non-demo use |
 | `diff.window-size` | `30` | Samples per metric window and baseline capacity |
 | `diff.threshold-pct` | `25` | Minimum absolute percentage change |
+| `diff.vibrationRms.mode` / `.threshold` | `percent` / `25` | Vibration threshold; legacy `diff.threshold-pct` remains the fallback |
+| `diff.tempC.mode` / `.threshold` | `absolute` / `4.0` | Temperature threshold in °C |
+| `diff.rfPowerDb.mode` / `.threshold` | `absolute` / `6.0` | RF threshold in relative dB |
 | `diff.persistence-windows` | `2` | Consecutive anomalous windows before raising an alert |
 | `diff.cooldown-ms` | `60000` | Per-node/metric alert cooldown |
 | `diff.dropout-intervals` | `5` | Missed expected intervals before a per-metric dropout event |

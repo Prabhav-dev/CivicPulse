@@ -38,7 +38,8 @@ public final class App {
                 config.getInt("diff.persistence-windows", 2),
             config.getLong("diff.cooldown-ms", 60_000),
                 config.getInt("diff.dropout-intervals", 5), expectedIntervalMs,
-                config.getInt("diff.max-nodes", 500), config.getLong("diff.node-ttl-ms", 3_600_000));
+                config.getInt("diff.max-nodes", 500), config.getLong("diff.node-ttl-ms", 3_600_000),
+                thresholds(config));
         CivicPulseService service = new CivicPulseService(anonymizer, diffEngine, store, alertService);
         SimulatedFleet fleet = new SimulatedFleet(anonymizer);
         TelemetrySource simulator = createSimulator(config, fleet);
@@ -96,4 +97,15 @@ public final class App {
         if ("inprocess".equalsIgnoreCase(source)) return new InProcessSimulator(fleet, interval, compression);
         return new HttpSimulator(fleet, config.get("sim.base-url", "http://127.0.0.1:7070"), interval, compression);
     }
+
+        private static java.util.Map<String, DiffEngine.Threshold> thresholds(AppConfig config) {
+        double defaultPercent = config.getDouble("diff.threshold-pct", 25);
+        return java.util.Map.of(
+            "vibrationRms", new DiffEngine.Threshold(config.get("diff.vibrationRms.mode", "percent"),
+                config.getDouble("diff.vibrationRms.threshold", defaultPercent)),
+            "tempC", new DiffEngine.Threshold(config.get("diff.tempC.mode", "absolute"),
+                config.getDouble("diff.tempC.threshold", 4.0)),
+            "rfPowerDb", new DiffEngine.Threshold(config.get("diff.rfPowerDb.mode", "absolute"),
+                config.getDouble("diff.rfPowerDb.threshold", 6.0)));
+        }
 }

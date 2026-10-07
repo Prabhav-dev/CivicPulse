@@ -41,7 +41,8 @@ public final class AlertService implements AlertGenerator, AutoCloseable {
         try {
             String text = request.get(timeoutMs, TimeUnit.MILLISECONDS);
             if (text == null || text.isBlank()) return fallback.create(latest);
-            return new Alert(latest.nodeLabel(), latest.metric(), latest.pctChange(), latest.ts(), text.trim(), "GEMINI");
+                return new Alert(latest.nodeLabel(), latest.metric(), latest.pctChange(), latest.ts(), text.trim(),
+                    "GEMINI", latest.absoluteChange(), latest.mode(), latest.kind());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             request.cancel(true);

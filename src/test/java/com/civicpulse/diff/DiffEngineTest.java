@@ -86,6 +86,30 @@ class DiffEngineTest {
         assertEquals(List.of("Bridge-B"), engine.snapshot().keySet().stream().sorted().toList());
     }
 
+    @Test
+    void absoluteTemperatureThresholdWorksNearZeroAndPreservesSignedDelta() {
+        DiffEngine engine = metricEngine("tempC", "absolute", 4.0);
+        for (int i = 0; i < 2; i++) engine.accept(metricReading("tempC", 0.5, i));
+        engine.accept(metricReading("tempC", -4.2, 2));
+        List<DeltaRecord> found = engine.accept(metricReading("tempC", -4.2, 3));
+
+        assertEquals(1, found.size());
+        assertEquals("absolute", found.getFirst().mode());
+        assertEquals(-4.7, found.getFirst().absoluteChange(), 0.001);
+    }
+
+    @Test
+    void absoluteDbThresholdDetectsNegativeShift() {
+        DiffEngine engine = metricEngine("rfPowerDb", "absolute", 6.0);
+        for (int i = 0; i < 2; i++) engine.accept(metricReading("rfPowerDb", -60, i));
+        engine.accept(metricReading("rfPowerDb", -67, 2));
+        List<DeltaRecord> found = engine.accept(metricReading("rfPowerDb", -67, 3));
+
+        assertEquals(1, found.size());
+        assertEquals(-7.0, found.getFirst().absoluteChange(), 0.001);
+        assertTrue(found.getFirst().pctChange() < 0);
+    }
+
     private static Reading reading(double vibration, long ts) {
         return reading(vibration, ts, ts);
     }
@@ -96,5 +120,17 @@ class DiffEngineTest {
 
     private static Reading missingVibration(long senderTs, long receiveTs) {
         return new Reading("Bridge-A", "bridge", Double.NaN, 20, -50, senderTs, receiveTs);
+    }
+
+    private static DiffEngine metricEngine(String metric, String mode, double threshold) {
+        return new DiffEngine(2, 25, 1, 0, 5, 1000, 500, 3_600_000,
+                java.util.Map.of(metric, new DiffEngine.Threshold(mode, threshold)));
+    }
+
+    private static Reading metricReading(String metric, double value, long timestamp) {
+        double vibration = "vibrationRms".equals(metric) ? value : Double.NaN;
+        double temperature = "tempC".equals(metric) ? value : Double.NaN;
+        double rfPower = "rfPowerDb".equals(metric) ? value : Double.NaN;
+        return new Reading("Bridge-A", "bridge", vibration, temperature, rfPower, timestamp, timestamp);
     }
 }

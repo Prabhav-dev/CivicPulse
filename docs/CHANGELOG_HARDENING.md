@@ -82,3 +82,14 @@
   README.
 - **Test evidence:** `AppStoreConfigTest` verifies malformed key startup failure
   and the explicit memory-fallback opt-in; `mvn -q test` passed.
+
+## B1: Per-metric thresholds
+
+- **What:** Keep vibration percentage thresholds and legacy `pctChange`, while
+  temperature and relative RF use signed absolute change by default. Each
+  delta also carries signed `absoluteChange` and the threshold `mode`.
+- **Why:** Percent change is unstable near 0 °C and misleading for negative dB.
+- **Files touched:** `DeltaRecord`, `DiffEngine`, `Alert`, alert generators,
+  `App`, properties, tests, README.
+- **Test evidence:** Tests cover temperature around zero and a negative RF
+  shift; `mvn -q test` passed.
