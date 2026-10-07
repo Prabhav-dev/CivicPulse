@@ -49,7 +49,7 @@ public final class SimulatedFleet {
             raw.put("rfPower", node.rfPower + random.nextGaussian() * 1.2);
             raw.put("ts", now);
             Injection injection = injections.get(node.mac);
-            if (injection != null && now <= injection.expiresAt) apply(raw, injection.type);
+            if (injection != null && now <= injection.expiresAt) apply(raw, injection, now);
             else if (injection != null) injections.remove(node.mac);
             samples.add(raw);
         }
@@ -65,18 +65,23 @@ public final class SimulatedFleet {
         if (!List.of("VIBRATION_SPIKE", "TEMP_DROP", "SENSOR_DRIFT", "DROPOUT").contains(type)) {
             throw new IllegalArgumentException("Unknown anomaly type");
         }
-        injections.put(mac, new Injection(type, clock.getAsLong() + durationSec * 1000L));
+        long now = clock.getAsLong();
+        injections.put(mac, new Injection(type, now, now + durationSec * 1000L));
     }
 
     public List<String> nodeLabels() {
         return List.copyOf(labelsByMac.values());
     }
 
-    private static void apply(Map<String, Object> reading, String type) {
-        switch (type) {
+    private static void apply(Map<String, Object> reading, Injection injection, long now) {
+        switch (injection.type) {
             case "VIBRATION_SPIKE" -> reading.compute("vibrationRms", (key, value) -> ((Number) value).doubleValue() * 1.7);
             case "TEMP_DROP" -> reading.compute("tempC", (key, value) -> ((Number) value).doubleValue() - 14.0);
-            case "SENSOR_DRIFT" -> reading.compute("tempC", (key, value) -> ((Number) value).doubleValue() + 12.0);
+            case "SENSOR_DRIFT" -> {
+                double elapsedFraction = Math.min(1.0,
+                        (double) (now - injection.startedAt) / (injection.expiresAt - injection.startedAt));
+                reading.compute("tempC", (key, value) -> ((Number) value).doubleValue() + 12.0 * elapsedFraction);
+            }
             case "DROPOUT" -> {
                 reading.remove("vibrationRms");
                 reading.remove("tempC");
@@ -88,5 +93,5 @@ public final class SimulatedFleet {
 
     private record Node(String type, String mac, String serial, String gpsFine,
                         double vibration, double temperature, double rfPower) { }
-    private record Injection(String type, long expiresAt) { }
+    private record Injection(String type, long startedAt, long expiresAt) { }
 }

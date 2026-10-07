@@ -13,7 +13,7 @@ class SimulatedFleetTest {
     void eachInjectionChangesItsIntendedSyntheticSignal() {
         assertInjectionChanges("VIBRATION_SPIKE", "vibrationRms", 0);
         assertInjectionChanges("TEMP_DROP", "tempC", 1);
-        assertInjectionChanges("SENSOR_DRIFT", "tempC", 12);
+        assertInjectionChanges("SENSOR_DRIFT", "tempC", 6);
 
         AtomicLong clock = new AtomicLong(10_000);
         Anonymizer anonymizer = new Anonymizer("fleet-test-salt");
@@ -52,6 +52,7 @@ class SimulatedFleetTest {
         String node = anonymizer.anonymize(baseline).nodeLabel();
         double before = ((Number) baseline.get(metric)).doubleValue();
         fleet.inject(node, type, 10);
+        if ("SENSOR_DRIFT".equals(type)) clock.addAndGet(5_000);
         double after = ((Number) fleet.sample().getFirst().get(metric)).doubleValue();
         if ("VIBRATION_SPIKE".equals(type)) assertTrue(after > before * 1.5);
         else if ("TEMP_DROP".equals(type)) assertTrue(after < before - Math.abs(minimumChange) / 2);

@@ -205,7 +205,8 @@
 ## G: Behavior and contract coverage
 
 - **What:** Add cooldown-reset, simulator injection/expiry/rejection,
-  concurrent-ingest, and shared memory/Yggdrasil store append-order tests. The
+  concurrent-ingest, and shared memory/Yggdrasil store append-order tests.
+  `SENSOR_DRIFT` now ramps across its configured injection duration. The
   shared Yggdrasil contract also verifies restart persistence; bounded memory
   retention has its own test because Yggdrasil retention is intentionally
   documented as unbounded.
