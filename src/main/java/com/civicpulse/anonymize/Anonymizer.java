@@ -27,7 +27,7 @@ public final class Anonymizer {
                 number(raw.get("vibrationRms")),
                 number(raw.get("tempC")),
                 number(raw.containsKey("rfPowerDb") ? raw.get("rfPowerDb") : raw.get("rfPower")),
-                timestamp(raw.get("ts")));
+                timestamp(raw.get("ts")), System.currentTimeMillis());
     }
 
     private String label(String type, String identity) {

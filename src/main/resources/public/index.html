@@ -45,6 +45,7 @@
     .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 8px; margin-top: 22px; }
     .metric-label { color: var(--muted); font-size: 11px; }
     .metric-value { margin-top: 4px; font-size: 18px; font-variant-numeric: tabular-nums; }
+    .metric-value.stale { color: var(--amber); }
     .unit { color: var(--muted); font-size: 11px; margin-left: 3px; }
     .lower { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr); gap: 38px; margin-top: 36px; }
     .feed { border-top: 1px solid var(--line); }
@@ -121,11 +122,14 @@
         nodeSelect.append(option);
         const item = document.createElement('article');
         item.className = 'node';
-        const old = Date.now() - node.ts > 5000;
+        const metricStates = node.baselineStats || {};
+        const trackedMetrics = Object.values(metricStates);
+        const old = trackedMetrics.length > 0 && trackedMetrics.every(metric => metric.stale);
+        const stale = metric => metricStates[metric]?.stale ? 'stale' : '';
         item.innerHTML = `<div class="node-top"><div><div class="node-name"></div><div class="node-type"></div></div><i class="signal ${old ? 'stale' : ''}"></i></div>
-          <div class="metrics"><div><div class="metric-label">Vibration RMS</div><div class="metric-value">${fmt(node.vibrationRms)}<span class="unit">g</span></div></div>
-          <div><div class="metric-label">Temperature</div><div class="metric-value">${fmt(node.tempC, 1)}<span class="unit">°C</span></div></div>
-          <div><div class="metric-label">RF power</div><div class="metric-value">${fmt(node.rfPowerDb, 1)}<span class="unit">dB rel.</span></div></div>
+          <div class="metrics"><div><div class="metric-label">Vibration RMS</div><div class="metric-value ${stale('vibrationRms')}">${fmt(node.vibrationRms)}<span class="unit">g</span></div></div>
+          <div><div class="metric-label">Temperature</div><div class="metric-value ${stale('tempC')}">${fmt(node.tempC, 1)}<span class="unit">°C</span></div></div>
+          <div><div class="metric-label">RF power</div><div class="metric-value ${stale('rfPowerDb')}">${fmt(node.rfPowerDb, 1)}<span class="unit">dB rel.</span></div></div>
           <div><div class="metric-label">Updated</div><div class="metric-value">${time(node.ts)}</div></div></div>`;
         item.querySelector('.node-name').textContent = node.nodeLabel;
         item.querySelector('.node-type').textContent = node.nodeType;

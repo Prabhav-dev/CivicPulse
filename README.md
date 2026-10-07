@@ -43,6 +43,8 @@ builds a single shaded runnable jar.
 | `diff.threshold-pct` | `25` | Minimum absolute percentage change |
 | `diff.persistence-windows` | `2` | Consecutive anomalous windows before raising an alert |
 | `diff.cooldown-ms` | `60000` | Per-node/metric alert cooldown |
+| `diff.dropout-intervals` | `5` | Missed expected intervals before a per-metric dropout event |
+| `diff.expected-interval-ms` | `1000` | Expected reporting interval used by dropout detection |
 | `sim.enabled` | `true` | Start the simulated fleet |
 | `sim.source` | `http` | `http` or `inprocess` telemetry source |
 | `sim.interval-ms` | `1000` | Nominal simulator sample interval |
@@ -57,6 +59,10 @@ Properties can be overridden with Java system properties, for example
 ```sh
 java -Dstore.type=yggdrasil -jar target/civicpulse.jar
 ```
+
+`/status` reports server-received last-seen timestamps per metric; dropout
+checks run periodically even when a node stops sending completely. The expected
+interval is configurable and independent of simulator time compression.
 
 HTTP routes: `POST /ingest`, `GET /alerts?limit=20`, `GET /status`,
 `POST /sim/inject`, and `GET /deltas?node=<neutral-label>&limit=20`.

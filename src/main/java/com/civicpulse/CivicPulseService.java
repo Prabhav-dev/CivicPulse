@@ -54,16 +54,28 @@ public final class CivicPulseService {
             deltas = diffEngine.accept(reading);
             for (DeltaRecord delta : deltas) store.append(delta);
         }
-        for (DeltaRecord delta : deltas) {
-            try {
-                alertWorker.execute(() -> createAndPublish(delta));
-            } catch (RejectedExecutionException e) {
-                if (queueOverflowLogged.compareAndSet(false, true)) {
-                    LOGGER.error("Alert queue is full; additional alert-generation jobs will be dropped");
-                }
+        for (DeltaRecord delta : deltas) enqueueAlert(delta);
+        return deltas;
+    }
+
+    public List<DeltaRecord> checkDropouts(long receiveTimeMs) {
+        List<DeltaRecord> deltas;
+        synchronized (stateLock) {
+            deltas = diffEngine.detectDropouts(receiveTimeMs);
+            for (DeltaRecord delta : deltas) store.append(delta);
+        }
+        for (DeltaRecord delta : deltas) enqueueAlert(delta);
+        return deltas;
+    }
+
+    private void enqueueAlert(DeltaRecord delta) {
+        try {
+            alertWorker.execute(() -> createAndPublish(delta));
+        } catch (RejectedExecutionException e) {
+            if (queueOverflowLogged.compareAndSet(false, true)) {
+                LOGGER.error("Alert queue is full; additional alert-generation jobs will be dropped");
             }
         }
-        return deltas;
     }
 
     private void createAndPublish(DeltaRecord delta) {

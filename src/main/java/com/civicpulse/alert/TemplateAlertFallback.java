@@ -6,6 +6,12 @@ import java.util.Locale;
 
 public final class TemplateAlertFallback {
     public Alert create(DeltaRecord record) {
+        if ("DROPOUT".equals(record.kind())) {
+            String text = String.format(Locale.ROOT,
+                    "No data has arrived from %s for %s. Check the sensor connection and power, then verify the reporting path.",
+                    record.nodeLabel(), record.metric());
+            return new Alert(record.nodeLabel(), record.metric(), 0, record.ts(), text, "TEMPLATE");
+        }
         String direction = record.pctChange() < 0 ? "decrease" : "increase";
         String action = switch (record.metric()) {
             case "vibrationRms" -> "Inspect the structure and verify the vibration sensor is firmly mounted";

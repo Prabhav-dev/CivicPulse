@@ -17,17 +17,27 @@ public final class DiffEngine {
     private final double thresholdPct;
     private final int persistenceWindows;
     private final long cooldownMs;
+    private final int dropoutIntervals;
+    private final long expectedIntervalMs;
     private final Map<String, Map<String, MetricState>> states = new LinkedHashMap<>();
     private final Map<String, Reading> latestReadings = new LinkedHashMap<>();
 
     public DiffEngine(int windowSize, double thresholdPct, int persistenceWindows, long cooldownMs) {
-        if (windowSize < 2 || thresholdPct < 0 || persistenceWindows < 1 || cooldownMs < 0) {
+        this(windowSize, thresholdPct, persistenceWindows, cooldownMs, 5, 1000);
+    }
+
+    public DiffEngine(int windowSize, double thresholdPct, int persistenceWindows,
+                      long cooldownMs, int dropoutIntervals, long expectedIntervalMs) {
+        if (windowSize < 2 || thresholdPct < 0 || persistenceWindows < 1 || cooldownMs < 0
+                || dropoutIntervals < 1 || expectedIntervalMs < 1) {
             throw new IllegalArgumentException("Invalid diff-engine configuration");
         }
         this.windowSize = windowSize;
         this.thresholdPct = thresholdPct;
         this.persistenceWindows = persistenceWindows;
         this.cooldownMs = cooldownMs;
+        this.dropoutIntervals = dropoutIntervals;
+        this.expectedIntervalMs = expectedIntervalMs;
     }
 
     public synchronized List<DeltaRecord> accept(Reading reading) {
@@ -36,12 +46,35 @@ public final class DiffEngine {
         List<DeltaRecord> deltas = new ArrayList<>();
         for (String metric : METRICS) {
             double value = value(reading, metric);
-            if (!Double.isFinite(value)) continue;
-            MetricState state = nodeStates.computeIfAbsent(metric, ignored -> new MetricState());
-            DeltaRecord delta = state.accept(reading, metric, value);
-            if (delta != null) deltas.add(delta);
+            MetricState state = nodeStates.get(metric);
+            if (Double.isFinite(value)) {
+                if (state == null) {
+                    state = new MetricState();
+                    nodeStates.put(metric, state);
+                }
+                DeltaRecord dropout = state.detectDropout(reading.nodeLabel(), metric, reading.receivedTs());
+                if (dropout != null) deltas.add(dropout);
+                state.lastSeenTs = reading.receivedTs();
+                state.dropoutReported = false;
+                DeltaRecord shift = state.accept(reading, metric, value);
+                if (shift != null) deltas.add(shift);
+            } else if (state != null) {
+                DeltaRecord dropout = state.detectDropout(reading.nodeLabel(), metric, reading.receivedTs());
+                if (dropout != null) deltas.add(dropout);
+            }
         }
         return List.copyOf(deltas);
+    }
+
+    public synchronized List<DeltaRecord> detectDropouts(long receiveTimeMs) {
+        List<DeltaRecord> events = new ArrayList<>();
+        for (Map.Entry<String, Map<String, MetricState>> node : states.entrySet()) {
+            for (Map.Entry<String, MetricState> metric : node.getValue().entrySet()) {
+                DeltaRecord event = metric.getValue().detectDropout(node.getKey(), metric.getKey(), receiveTimeMs);
+                if (event != null) events.add(event);
+            }
+        }
+        return List.copyOf(events);
     }
 
     public synchronized Map<String, NodeSnapshot> snapshot() {
@@ -51,7 +84,8 @@ public final class DiffEngine {
             for (Map.Entry<String, MetricState> metric : states.getOrDefault(node.getKey(), Map.of()).entrySet()) {
                 MetricState state = metric.getValue();
                 metrics.put(metric.getKey(), new MetricStats(mean(state.baseline), stddev(state.baseline),
-                        state.baseline.size(), state.latestValue));
+                    state.baseline.size(), state.latestValue, state.lastSeenTs,
+                    state.isStale(System.currentTimeMillis())));
             }
             result.put(node.getKey(), new NodeSnapshot(node.getValue(), Map.copyOf(metrics)));
         }
@@ -63,7 +97,26 @@ public final class DiffEngine {
         private final ArrayDeque<Double> live = new ArrayDeque<>();
         private int consecutiveCandidates;
         private long lastAlertTs = Long.MIN_VALUE;
+        private long lastSeenTs = Long.MIN_VALUE;
+        private long lastDropoutAlertTs = Long.MIN_VALUE;
+        private boolean dropoutReported;
         private double latestValue = Double.NaN;
+
+        private DeltaRecord detectDropout(String nodeLabel, String metric, long now) {
+            if (lastSeenTs == Long.MIN_VALUE || dropoutReported
+                || now - lastSeenTs <= expectedIntervalMs * dropoutIntervals) return null;
+            dropoutReported = true;
+            boolean coolingDown = lastDropoutAlertTs != Long.MIN_VALUE
+                && now - lastDropoutAlertTs < cooldownMs;
+            if (coolingDown) return null;
+            lastDropoutAlertTs = now;
+            return new DeltaRecord(nodeLabel, metric, 0, Math.max(0, baseline.size() - 1), now, "DROPOUT");
+        }
+
+        private boolean isStale(long now) {
+            return lastSeenTs != Long.MIN_VALUE
+                && now - lastSeenTs > expectedIntervalMs * dropoutIntervals;
+        }
 
         private DeltaRecord accept(Reading reading, String metric, double value) {
             latestValue = value;
@@ -164,6 +217,7 @@ public final class DiffEngine {
         return count < 2 ? 0 : Math.sqrt(sum / count);
     }
 
-    public record MetricStats(double baselineMean, double baselineStdDev, int sampleCount, double latestValue) { }
+    public record MetricStats(double baselineMean, double baselineStdDev, int sampleCount,
+                              double latestValue, long lastSeenTs, boolean stale) { }
     public record NodeSnapshot(Reading latestReading, Map<String, MetricStats> metrics) { }
 }

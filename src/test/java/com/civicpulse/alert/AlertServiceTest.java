@@ -28,6 +28,14 @@ class AlertServiceTest {
     }
 
     @Test
+    void dropoutUsesNoDataTemplate() {
+        Alert alert = new TemplateAlertFallback().create(
+                new DeltaRecord("Bridge-A", "vibrationRms", 0, 1, 1000, "DROPOUT"));
+        assertEquals("TEMPLATE", alert.source());
+        assertTrue(alert.text().contains("No data has arrived"));
+    }
+
+    @Test
     void slowAlertGenerationDoesNotBlockIngestAndPublishesLater() throws Exception {
         CountDownLatch generatorStarted = new CountDownLatch(1);
         CountDownLatch alertPublished = new CountDownLatch(1);

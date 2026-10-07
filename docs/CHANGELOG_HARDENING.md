@@ -29,3 +29,22 @@
   `src/test/java/com/civicpulse/alert/AlertServiceTest.java`.
 - **Test evidence:** `mvn -q test` passed; the two-second fake-generator test
   asserts ingest returns in under 100 ms and that the alert is later published.
+
+## A2: Per-metric dropout detection
+
+- **What:** Readings now retain server receive time separately from sender time.
+  The engine tracks each observed metric's last-seen receive time, emits one
+  `DROPOUT` delta after the configured missed-interval threshold, resets on
+  recovery, and supports periodic scans when a node becomes completely silent.
+  `/status` exposes last-seen timestamps and stale flags; the dashboard uses
+  those server-side flags.
+- **Why:** Missing samples must be observable even when other metrics or the
+  entire node stop reporting.
+- **Files touched:** `Reading`, `DeltaRecord`, `Anonymizer`, `DiffEngine`,
+  `CivicPulseService`, `App`, `CivicPulseRoutes`, `TemplateAlertFallback`,
+  `application.properties`, dashboard, tests, and README.
+- **Test evidence:** `mvn -q test` passed. `DiffEngineTest` covers missed
+  intervals, single event, cooldown, recovery, per-metric last-seen receive
+  time, and subsequent dropout; `AlertServiceTest` verifies no-data wording.
+- **Assumption:** Dropout timing uses `diff.expected-interval-ms`, not simulator
+  time compression, so external telemetry sources can configure their cadence.

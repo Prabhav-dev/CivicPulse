@@ -28,9 +28,11 @@ public final class CivicPulseRoutes {
             Map<String, Object> result = new LinkedHashMap<>();
             for (Map.Entry<String, DiffEngine.NodeSnapshot> entry : service.status().entrySet()) {
                 Reading reading = entry.getValue().latestReading();
+                Map<String, Long> lastSeen = new LinkedHashMap<>();
+                entry.getValue().metrics().forEach((metric, stats) -> lastSeen.put(metric, stats.lastSeenTs()));
                 result.put(entry.getKey(), new NodeStatus(reading.nodeLabel(), reading.nodeType(), reading.ts(),
                         finite(reading.vibrationRms()), finite(reading.tempC()), finite(reading.rfPowerDb()),
-                        entry.getValue().metrics()));
+                    Map.copyOf(lastSeen), entry.getValue().metrics()));
             }
             ctx.json(result);
         });
@@ -80,5 +82,6 @@ public final class CivicPulseRoutes {
 
     private record NodeStatus(String nodeLabel, String nodeType, long ts,
                               Double vibrationRms, Double tempC, Double rfPowerDb,
+                              Map<String, Long> lastSeenByMetric,
                               Map<String, DiffEngine.MetricStats> baselineStats) { }
 }
