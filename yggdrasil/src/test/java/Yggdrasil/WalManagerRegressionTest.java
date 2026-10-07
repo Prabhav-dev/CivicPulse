@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
+import java.util.List;
 import Yggdrasil.core.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -94,5 +95,23 @@ public final class WalManagerRegressionTest {
         if (!targetWalFile.delete()) {
             targetWalFile.deleteOnExit();
         }
+    }
+
+    @Test
+    void scansOnlyKeysInsideInclusiveRange(@TempDir Path tempDir) throws Exception {
+        StorageManager storage = new StorageManager(new byte[16], tempDir.toString());
+        storage.boot();
+        WalManager wal = new WalManager(tempDir.toString());
+        wal.open();
+        BPlusTree tree = new BPlusTree(storage);
+        RecordManager records = new RecordManager(storage, tree, wal);
+        records.redoRecovery();
+        for (int key : new int[]{9, 10, 15, 20}) records.insert(key, new byte[]{(byte) key});
+
+        assertEquals(List.of(tree.search(10), tree.search(15)), tree.scanRange(10, 15));
+        assertTrue(tree.scanRange(21, 30).isEmpty());
+        assertTrue(tree.scanRange(20, 10).isEmpty());
+        wal.close();
+        storage.close();
     }
 }

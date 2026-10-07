@@ -83,6 +83,12 @@ java -Dstore.type=yggdrasil -jar target/civicpulse.jar
 Yggdrasil initialization errors stop startup by default. Use
 `-Dstore.fallback-to-memory=true` only when losing persistence for that run is
 acceptable.
+Yggdrasil delta retention is currently unbounded. Its CivicPulse index uses
+the bounded key range described in [docs/API.md](docs/API.md) and stores only
+delta JSON. The `civicpulse-sequences.properties` sidecar records numeric
+high-water marks, not node labels. Existing databases from the earlier random
+key format have no sequence catalog; use a fresh storage directory or back up
+and migrate those records before upgrading.
 
 Secret precedence is environment variable, then Java system property, then
 `application.properties`. Set `CIVICPULSE_ANONYMIZER_SALT` and

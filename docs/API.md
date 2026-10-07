@@ -72,7 +72,10 @@ curl -i -X POST http://127.0.0.1:7070/sim/inject \
 
 Returns recent stored delta records for one neutral label. `node` is required;
 `limit` defaults to 20 and is clamped to 0–100. Deltas contain no raw sensor
-fields or device identifiers.
+fields or device identifiers. Both stores return matching entries in append
+order, independent of sender timestamps. The Yggdrasil store retains deltas
+without a cleanup policy, so its on-disk index grows until the operator
+archives or replaces the configured data directory.
 
 ```sh
 curl -i 'http://127.0.0.1:7070/deltas?node=Bridge-0123456789AB&limit=20' \

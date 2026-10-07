@@ -183,3 +183,21 @@
 - **RunTests:** The original nested checkout remains unmodified, including its
   legacy `RunTests` entry point. The standalone module's five named checks run
   through JUnit under the root Maven reactor.
+
+## E: Bounded Yggdrasil delta index
+
+- **What:** Add an inclusive B+Tree range API. Delta keys use an 11-bit stable
+  node-label hash bucket and a 20-bit monotonic sequence shared within that
+  bucket. Numeric bucket high-water marks persist in
+  `civicpulse-sequences.properties`; range reads visit only that bucket and
+  filter exact labels. Both store implementations return append order. Yggdrasil
+  retention is unbounded and documented. The new store refuses a non-empty
+  legacy random-key database without a sequence catalog rather than risking
+  collisions.
+- **Why:** Replace a full-index `readRecent` scan with a bounded ordered range
+  while safely handling hash collisions and process restarts.
+- **Files touched:** Standalone Yggdrasil `BPlusTree`, `YggdrasilDeltaStore`,
+  sequence catalog logic, range/contract tests, README, API docs.
+- **Test evidence:** B+Tree inclusive-range test; Yggdrasil two-label bucket
+  collision, append ordering, restart high-water and persistence test; memory
+  append-order test. `mvn -q -pl civicpulse -am test` passed.

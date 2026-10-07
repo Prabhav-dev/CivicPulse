@@ -269,6 +269,46 @@ public class BPlusTree {
         }
     }
 
+    public synchronized List<Long> scanRange(int lowerInclusive, int upperInclusive) throws IOException {
+        List<Long> results = new ArrayList<>();
+        for (Entry entry : scanRangeEntries(lowerInclusive, upperInclusive)) results.add(entry.value());
+        return results;
+    }
+
+    public synchronized List<Entry> scanRangeEntries(int lowerInclusive, int upperInclusive) throws IOException {
+        List<Entry> results = new ArrayList<>();
+        if (lowerInclusive > upperInclusive || storageManager.getMetadata().getRootPageID() == -1) {
+            return results;
+        }
+
+        LeafNode leaf = findLeafNode(lowerInclusive);
+        boolean finished = false;
+        while (leaf != null && !finished) {
+            int activePageNumber = leaf.getPageNumber();
+            int nextPageNumber;
+            try {
+                int[] keys = leaf.getKeys();
+                long[] values = leaf.getValues();
+                for (int index = 0; index < leaf.getKeyCount(); index++) {
+                    int key = keys[index];
+                    if (key > upperInclusive) {
+                        finished = true;
+                        break;
+                    }
+                    if (key >= lowerInclusive) results.add(new Entry(key, values[index]));
+                }
+                nextPageNumber = leaf.getNextLeafPageID();
+            } finally {
+                storageManager.unpinPage(activePageNumber);
+            }
+            leaf = finished || nextPageNumber == -1
+                    ? null : (LeafNode) storageManager.getPage(-1, nextPageNumber);
+        }
+        return results;
+    }
+
+    public record Entry(int key, long value) { }
+
     public synchronized List<Long> query(int targetKey, Operator op) throws IOException {
         List<Long> results = new ArrayList<>();
         if (storageManager.getMetadata().getRootPageID() == -1) {
