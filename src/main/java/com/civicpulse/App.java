@@ -37,13 +37,16 @@ public final class App {
                 config.getDouble("diff.threshold-pct", 25),
                 config.getInt("diff.persistence-windows", 2),
             config.getLong("diff.cooldown-ms", 60_000),
-            config.getInt("diff.dropout-intervals", 5), expectedIntervalMs);
+                config.getInt("diff.dropout-intervals", 5), expectedIntervalMs,
+                config.getInt("diff.max-nodes", 500), config.getLong("diff.node-ttl-ms", 3_600_000));
         CivicPulseService service = new CivicPulseService(anonymizer, diffEngine, store, alertService);
         SimulatedFleet fleet = new SimulatedFleet(anonymizer);
         TelemetrySource simulator = createSimulator(config, fleet);
         Javalin app;
         try {
-            app = CivicPulseRoutes.create(service, simulator, config.getInt("server.port", 7070));
+                app = CivicPulseRoutes.create(service, simulator, config.getInt("server.port", 7070),
+                    config.getInt("request.max-body-bytes", 8192),
+                    config.getLong("ingest.timestamp-window-ms", 300_000));
         } catch (RuntimeException e) {
             service.close();
             throw e;

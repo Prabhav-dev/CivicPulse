@@ -34,6 +34,8 @@ builds a single shaded runnable jar.
 | Property | Default | Purpose |
 | --- | --- | --- |
 | `server.port` | `7070` | HTTP server port |
+| `request.max-body-bytes` | `8192` | Maximum streamed JSON request size |
+| `ingest.timestamp-window-ms` | `300000` | Timestamp window around server time; outside it, server time is used |
 | `store.type` | `memory` | `memory` or `yggdrasil` delta store |
 | `store.directory` | `data/yggdrasil` | Yggdrasil database and WAL directory |
 | `store.max-records` | `10000` | In-memory delta retention limit |
@@ -45,6 +47,8 @@ builds a single shaded runnable jar.
 | `diff.cooldown-ms` | `60000` | Per-node/metric alert cooldown |
 | `diff.dropout-intervals` | `5` | Missed expected intervals before a per-metric dropout event |
 | `diff.expected-interval-ms` | `1000` | Expected reporting interval used by dropout detection |
+| `diff.max-nodes` | `500` | Maximum tracked node labels; new nodes receive HTTP 429 at capacity |
+| `diff.node-ttl-ms` | `3600000` | Idle time after which a node's state is evicted |
 | `sim.enabled` | `true` | Start the simulated fleet |
 | `sim.source` | `http` | `http` or `inprocess` telemetry source |
 | `sim.interval-ms` | `1000` | Nominal simulator sample interval |

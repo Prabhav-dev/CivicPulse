@@ -19,6 +19,8 @@ public final class DiffEngine {
     private final long cooldownMs;
     private final int dropoutIntervals;
     private final long expectedIntervalMs;
+    private final int maxNodes;
+    private final long nodeTtlMs;
     private final Map<String, Map<String, MetricState>> states = new LinkedHashMap<>();
     private final Map<String, Reading> latestReadings = new LinkedHashMap<>();
 
@@ -28,8 +30,15 @@ public final class DiffEngine {
 
     public DiffEngine(int windowSize, double thresholdPct, int persistenceWindows,
                       long cooldownMs, int dropoutIntervals, long expectedIntervalMs) {
+        this(windowSize, thresholdPct, persistenceWindows, cooldownMs, dropoutIntervals,
+            expectedIntervalMs, 500, 3_600_000);
+        }
+
+        public DiffEngine(int windowSize, double thresholdPct, int persistenceWindows,
+                  long cooldownMs, int dropoutIntervals, long expectedIntervalMs,
+                  int maxNodes, long nodeTtlMs) {
         if (windowSize < 2 || thresholdPct < 0 || persistenceWindows < 1 || cooldownMs < 0
-                || dropoutIntervals < 1 || expectedIntervalMs < 1) {
+            || dropoutIntervals < 1 || expectedIntervalMs < 1 || maxNodes < 1 || nodeTtlMs < 1) {
             throw new IllegalArgumentException("Invalid diff-engine configuration");
         }
         this.windowSize = windowSize;
@@ -38,9 +47,15 @@ public final class DiffEngine {
         this.cooldownMs = cooldownMs;
         this.dropoutIntervals = dropoutIntervals;
         this.expectedIntervalMs = expectedIntervalMs;
+        this.maxNodes = maxNodes;
+        this.nodeTtlMs = nodeTtlMs;
     }
 
     public synchronized List<DeltaRecord> accept(Reading reading) {
+        evictExpired(reading.receivedTs());
+        if (!latestReadings.containsKey(reading.nodeLabel()) && latestReadings.size() >= maxNodes) {
+            throw new NodeCapacityException(maxNodes);
+        }
         latestReadings.put(reading.nodeLabel(), reading);
         Map<String, MetricState> nodeStates = states.computeIfAbsent(reading.nodeLabel(), ignored -> new LinkedHashMap<>());
         List<DeltaRecord> deltas = new ArrayList<>();
@@ -67,6 +82,7 @@ public final class DiffEngine {
     }
 
     public synchronized List<DeltaRecord> detectDropouts(long receiveTimeMs) {
+        evictExpired(receiveTimeMs);
         List<DeltaRecord> events = new ArrayList<>();
         for (Map.Entry<String, Map<String, MetricState>> node : states.entrySet()) {
             for (Map.Entry<String, MetricState> metric : node.getValue().entrySet()) {
@@ -75,6 +91,16 @@ public final class DiffEngine {
             }
         }
         return List.copyOf(events);
+    }
+
+    private void evictExpired(long now) {
+        List<String> expired = latestReadings.entrySet().stream()
+                .filter(entry -> now - entry.getValue().receivedTs() > nodeTtlMs)
+                .map(Map.Entry::getKey).toList();
+        for (String nodeLabel : expired) {
+            latestReadings.remove(nodeLabel);
+            states.remove(nodeLabel);
+        }
     }
 
     public synchronized Map<String, NodeSnapshot> snapshot() {

@@ -4,6 +4,7 @@ import com.civicpulse.alert.Alert;
 import com.civicpulse.alert.AlertGenerator;
 import com.civicpulse.anonymize.Anonymizer;
 import com.civicpulse.diff.DiffEngine;
+import com.civicpulse.diff.NodeCapacityException;
 import com.civicpulse.model.DeltaRecord;
 import com.civicpulse.model.Reading;
 import com.civicpulse.store.DeltaStore;
@@ -31,6 +32,7 @@ public final class CivicPulseService {
     private final Object alertsLock = new Object();
     private final Object stateLock = new Object();
     private final AtomicBoolean queueOverflowLogged = new AtomicBoolean();
+    private final AtomicBoolean nodeCapacityLogged = new AtomicBoolean();
     private final AtomicBoolean closed = new AtomicBoolean();
     private final ThreadPoolExecutor alertWorker = new ThreadPoolExecutor(
             1, 1, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(256), task -> {
@@ -50,9 +52,14 @@ public final class CivicPulseService {
     public List<DeltaRecord> ingest(Map<String, Object> raw) {
         Reading reading = anonymizer.anonymize(raw);
         List<DeltaRecord> deltas;
-        synchronized (stateLock) {
-            deltas = diffEngine.accept(reading);
-            for (DeltaRecord delta : deltas) store.append(delta);
+        try {
+            synchronized (stateLock) {
+                deltas = diffEngine.accept(reading);
+                for (DeltaRecord delta : deltas) store.append(delta);
+            }
+        } catch (NodeCapacityException e) {
+            if (nodeCapacityLogged.compareAndSet(false, true)) LOGGER.warn(e.getMessage());
+            throw e;
         }
         for (DeltaRecord delta : deltas) enqueueAlert(delta);
         return deltas;

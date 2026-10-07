@@ -2,6 +2,7 @@ package com.civicpulse.web;
 
 import com.civicpulse.CivicPulseService;
 import com.civicpulse.diff.DiffEngine;
+import com.civicpulse.diff.NodeCapacityException;
 import com.civicpulse.model.Reading;
 import com.civicpulse.sim.TelemetrySource;
 import io.javalin.Javalin;
@@ -9,19 +10,32 @@ import io.javalin.http.staticfiles.Location;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.io.IOException;
 
 public final class CivicPulseRoutes {
     private CivicPulseRoutes() { }
 
     public static Javalin create(CivicPulseService service, TelemetrySource simulator, int port) {
+        return create(service, simulator, port, 8192, 300_000);
+    }
+
+    public static Javalin create(CivicPulseService service, TelemetrySource simulator, int port,
+                                 int maxBodyBytes, long timestampWindowMs) {
         Javalin app = Javalin.create(config -> config.staticFiles.add("/public", Location.CLASSPATH));
         app.get("/", ctx -> ctx.redirect("/index.html"));
         app.post("/ingest", ctx -> {
-            Map<String, Object> raw = ctx.bodyAsClass(Map.class);
             try {
-                ctx.json(Map.of("accepted", true, "deltas", service.ingest(raw)));
+                Map<String, Object> raw = RequestBodyReader.readJson(ctx.req().getInputStream(), maxBodyBytes);
+                Map<String, Object> validated = IngestValidator.validate(raw, System.currentTimeMillis(), timestampWindowMs);
+                ctx.json(Map.of("accepted", true, "deltas", service.ingest(validated)));
+            } catch (PayloadTooLargeException e) {
+                ctx.status(413).json(Map.of("error", e.getMessage()));
+            } catch (NodeCapacityException e) {
+                ctx.status(429).json(Map.of("error", e.getMessage()));
             } catch (IllegalArgumentException e) {
                 ctx.status(400).json(Map.of("error", e.getMessage()));
+            } catch (IOException e) {
+                ctx.status(400).json(Map.of("error", "Malformed JSON body"));
             }
         });
         app.get("/alerts", ctx -> {
@@ -53,8 +67,8 @@ public final class CivicPulseRoutes {
                 ctx.status(409).json(Map.of("error", "simulator is disabled"));
                 return;
             }
-            Map<String, Object> request = ctx.bodyAsClass(Map.class);
             try {
+                Map<String, Object> request = RequestBodyReader.readJson(ctx.req().getInputStream(), maxBodyBytes);
                 Object node = request.get("node");
                 Object type = request.get("type");
                 Object duration = request.get("durationSec");
@@ -64,8 +78,12 @@ public final class CivicPulseRoutes {
                 }
                 simulator.inject(node.toString(), type.toString(), seconds.intValue());
                 ctx.json(Map.of("accepted", true));
+            } catch (PayloadTooLargeException e) {
+                ctx.status(413).json(Map.of("error", e.getMessage()));
             } catch (IllegalArgumentException e) {
                 ctx.status(400).json(Map.of("error", e.getMessage()));
+            } catch (IOException e) {
+                ctx.status(400).json(Map.of("error", "Malformed JSON body"));
             }
         });
         app.exception(Exception.class, (error, ctx) -> {

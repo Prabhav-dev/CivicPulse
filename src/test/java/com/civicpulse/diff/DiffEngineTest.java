@@ -75,6 +75,17 @@ class DiffEngineTest {
         assertTrue(engine.detectDropouts(12_000).isEmpty());
     }
 
+    @Test
+    void nodeCapacityRejectsNewLabelsAndEvictsExpiredNodes() {
+        DiffEngine engine = new DiffEngine(2, 25, 2, 0, 5, 1000, 1, 1000);
+        engine.accept(new Reading("Bridge-A", "bridge", 1, 20, -50, 1000, 1000));
+        assertThrows(NodeCapacityException.class,
+                () -> engine.accept(new Reading("Bridge-B", "bridge", 1, 20, -50, 1500, 1500)));
+
+        engine.accept(new Reading("Bridge-B", "bridge", 1, 20, -50, 2001, 2001));
+        assertEquals(List.of("Bridge-B"), engine.snapshot().keySet().stream().sorted().toList());
+    }
+
     private static Reading reading(double vibration, long ts) {
         return reading(vibration, ts, ts);
     }

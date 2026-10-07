@@ -57,3 +57,17 @@
 - **Why:** Identity-less devices of one type must not silently merge.
 - **Files touched:** `Anonymizer`, `CivicPulseRoutes`, `AnonymizerTest`, README.
 - **Test evidence:** `mvn -q test` covers both absent and blank identities.
+
+## A4: Bound input and node state
+
+- **What:** Read JSON from the request stream with an 8 KB default cap; validate
+  finite vibration, temperature, and RF ranges; normalize missing or out-of-
+  window timestamps to server time; cap tracked nodes and evict nodes idle past
+  the configured TTL. Capacity exhaustion is logged once and returned as 429.
+- **Why:** Bound request and state memory and reject unsafe numeric values.
+- **Files touched:** `RequestBodyReader`, `PayloadTooLargeException`,
+  `IngestValidator`, `NodeCapacityException`, `DiffEngine`, `CivicPulseService`,
+  routes, `App`, properties, tests, README.
+- **Test evidence:** `IngestValidationTest` covers oversize, finite/range,
+  optional metrics, and timestamp normalization; `DiffEngineTest` covers cap
+  rejection and TTL eviction. `mvn -q test` passed.
