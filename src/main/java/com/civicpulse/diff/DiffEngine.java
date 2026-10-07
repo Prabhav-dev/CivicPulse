@@ -22,6 +22,8 @@ public final class DiffEngine {
     private final int maxNodes;
     private final long nodeTtlMs;
     private final Map<String, Threshold> thresholds;
+    private final double longTermAlpha;
+    private final double longTermThresholdScale;
     private final Map<String, Map<String, MetricState>> states = new LinkedHashMap<>();
     private final Map<String, Reading> latestReadings = new LinkedHashMap<>();
 
@@ -45,8 +47,18 @@ public final class DiffEngine {
             public DiffEngine(int windowSize, double thresholdPct, int persistenceWindows,
                       long cooldownMs, int dropoutIntervals, long expectedIntervalMs,
                       int maxNodes, long nodeTtlMs, Map<String, Threshold> thresholds) {
+                this(windowSize, thresholdPct, persistenceWindows, cooldownMs, dropoutIntervals,
+                    expectedIntervalMs, maxNodes, nodeTtlMs, thresholds, 0.005, 1.0);
+                }
+
+                public DiffEngine(int windowSize, double thresholdPct, int persistenceWindows,
+                          long cooldownMs, int dropoutIntervals, long expectedIntervalMs,
+                          int maxNodes, long nodeTtlMs, Map<String, Threshold> thresholds,
+                          double longTermAlpha, double longTermThresholdScale) {
         if (windowSize < 2 || thresholdPct < 0 || persistenceWindows < 1 || cooldownMs < 0
-            || dropoutIntervals < 1 || expectedIntervalMs < 1 || maxNodes < 1 || nodeTtlMs < 1) {
+                    || dropoutIntervals < 1 || expectedIntervalMs < 1 || maxNodes < 1 || nodeTtlMs < 1
+                    || !Double.isFinite(longTermAlpha) || longTermAlpha <= 0 || longTermAlpha > 1
+                    || !Double.isFinite(longTermThresholdScale) || longTermThresholdScale < 0) {
             throw new IllegalArgumentException("Invalid diff-engine configuration");
         }
         this.windowSize = windowSize;
@@ -58,6 +70,8 @@ public final class DiffEngine {
         this.maxNodes = maxNodes;
         this.nodeTtlMs = nodeTtlMs;
         this.thresholds = Map.copyOf(thresholds);
+        this.longTermAlpha = longTermAlpha;
+        this.longTermThresholdScale = longTermThresholdScale;
     }
 
     public synchronized List<DeltaRecord> accept(Reading reading) {
@@ -119,7 +133,7 @@ public final class DiffEngine {
             for (Map.Entry<String, MetricState> metric : states.getOrDefault(node.getKey(), Map.of()).entrySet()) {
                 MetricState state = metric.getValue();
                 metrics.put(metric.getKey(), new MetricStats(mean(state.baseline), stddev(state.baseline),
-                    state.baseline.size(), state.latestValue, state.lastSeenTs,
+                    state.baseline.size(), state.latestValue, state.longTermReference, state.lastSeenTs,
                     state.isStale(System.currentTimeMillis())));
             }
             result.put(node.getKey(), new NodeSnapshot(node.getValue(), Map.copyOf(metrics)));
@@ -136,6 +150,7 @@ public final class DiffEngine {
         private long lastDropoutAlertTs = Long.MIN_VALUE;
         private boolean dropoutReported;
         private double latestValue = Double.NaN;
+        private double longTermReference = Double.NaN;
 
         private DeltaRecord detectDropout(String nodeLabel, String metric, long now) {
             if (lastSeenTs == Long.MIN_VALUE || dropoutReported
@@ -158,6 +173,7 @@ public final class DiffEngine {
             latestValue = value;
             if (baseline.size() < windowSize) {
                 addWindow(baseline, value);
+                if (baseline.size() == windowSize) longTermReference = mean(baseline);
                 return null;
             }
 
@@ -165,17 +181,30 @@ public final class DiffEngine {
             if (live.size() < windowSize) return null;
             double baselineMean = mean(baseline);
             double liveMean = mean(live);
-                double absoluteChange = liveMean - baselineMean;
-                double pctChange = 100.0 * absoluteChange / denominator(metric, baselineMean);
                 Threshold threshold = thresholds.getOrDefault(metric, new Threshold("percent", thresholdPct));
-                double thresholdValue = "absolute".equals(threshold.mode()) ? absoluteChange : pctChange;
+            double shortAbsoluteChange = liveMean - baselineMean;
+            double shortPctChange = 100.0 * shortAbsoluteChange / denominator(metric, baselineMean);
+            double longAbsoluteChange = liveMean - longTermReference;
+            double longPctChange = 100.0 * longAbsoluteChange / denominator(metric, longTermReference);
+            double shortChange = "absolute".equals(threshold.mode()) ? shortAbsoluteChange : shortPctChange;
+            double longChange = "absolute".equals(threshold.mode()) ? longAbsoluteChange : longPctChange;
+            boolean shortExceeded = Math.abs(shortChange) >= threshold.value();
+            boolean longExceeded = Double.isFinite(longTermReference)
+                    && Math.abs(longChange) >= threshold.value() * longTermThresholdScale;
+                boolean thresholdAnomaly = shortExceeded || longExceeded;
             Patch<String> patch = DiffUtils.diff(symbols(baseline, baselineMean, stddev(baseline)),
                     symbols(live, baselineMean, stddev(baseline)));
-                boolean candidate = !patch.getDeltas().isEmpty() && Math.abs(thresholdValue) >= threshold.value();
+                boolean candidate = !patch.getDeltas().isEmpty() && thresholdAnomaly;
+            boolean useLongReference = longExceeded && !shortExceeded;
+            double absoluteChange = useLongReference ? longAbsoluteChange : shortAbsoluteChange;
+            double pctChange = useLongReference ? longPctChange : shortPctChange;
 
             if (!candidate) {
                 consecutiveCandidates = 0;
-                for (double sample : live) addWindow(baseline, sample);
+                if (!thresholdAnomaly) {
+                    for (double sample : live) addWindow(baseline, sample);
+                    longTermReference += longTermAlpha * (liveMean - longTermReference);
+                }
                 live.clear();
                 return null;
             }
@@ -258,7 +287,8 @@ public final class DiffEngine {
     }
 
     public record MetricStats(double baselineMean, double baselineStdDev, int sampleCount,
-                              double latestValue, long lastSeenTs, boolean stale) { }
+                              double latestValue, double longTermMean,
+                              long lastSeenTs, boolean stale) { }
     public record NodeSnapshot(Reading latestReading, Map<String, MetricStats> metrics) { }
 
     private static Map<String, Threshold> percentThresholds(double thresholdPct) {

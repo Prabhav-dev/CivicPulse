@@ -47,6 +47,8 @@ builds a single shaded runnable jar.
 | `diff.vibrationRms.mode` / `.threshold` | `percent` / `25` | Vibration threshold; legacy `diff.threshold-pct` remains the fallback |
 | `diff.tempC.mode` / `.threshold` | `absolute` / `4.0` | Temperature threshold in °C |
 | `diff.rfPowerDb.mode` / `.threshold` | `absolute` / `6.0` | RF threshold in relative dB |
+| `diff.long-term-alpha` | `0.001` | EWMA reference update rate, applied only to quiet windows |
+| `diff.long-term-threshold-scale` | `1.0` | Multiplier on each metric's threshold for long-term drift |
 | `diff.persistence-windows` | `2` | Consecutive anomalous windows before raising an alert |
 | `diff.cooldown-ms` | `60000` | Per-node/metric alert cooldown |
 | `diff.dropout-intervals` | `5` | Missed expected intervals before a per-metric dropout event |

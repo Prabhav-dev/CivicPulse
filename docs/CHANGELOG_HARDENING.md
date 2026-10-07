@@ -93,3 +93,15 @@
   `App`, properties, tests, README.
 - **Test evidence:** Tests cover temperature around zero and a negative RF
   shift; `mvn -q test` passed.
+
+## B2: Protect against slow drift
+
+- **What:** Keep a long-term EWMA reference alongside the rolling baseline.
+  Either reference can trigger a threshold crossing; windows that cross either
+  threshold are not absorbed into the rolling baseline or EWMA.
+- **Why:** Prevent a sequence of individually small shifts from silently
+  poisoning the reference and hiding a gradual anomaly.
+- **Files touched:** `DiffEngine`, `App`, application properties, tests, README.
+- **Test evidence:** `DiffEngineTest` covers a deterministic +2% per-window
+  drift and verifies an anomalous window leaves both references unchanged;
+  `mvn -q test` passed.

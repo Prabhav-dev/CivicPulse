@@ -110,6 +110,39 @@ class DiffEngineTest {
         assertTrue(found.getFirst().pctChange() < 0);
     }
 
+    @Test
+    void slowDriftEventuallyCrossesTheFrozenLongTermReference() {
+        DiffEngine engine = new DiffEngine(4, 20, 1, 0, 5, 1000, 500, 3_600_000,
+                java.util.Map.of("vibrationRms", new DiffEngine.Threshold("percent", 20)), 0.001, 1.0);
+        for (int i = 0; i < 4; i++) engine.accept(reading(1.0, i));
+
+        List<DeltaRecord> found = List.of();
+        for (int window = 1; window <= 30 && found.isEmpty(); window++) {
+            double level = 1.0 + window * 0.02;
+            for (int sample = 0; sample < 4; sample++) {
+                found = engine.accept(reading(level, 4L + (window - 1L) * 4 + sample));
+            }
+        }
+
+        assertEquals(1, found.size());
+        assertTrue(found.getFirst().pctChange() >= 20);
+        assertTrue(found.getFirst().absoluteChange() > 0);
+    }
+
+    @Test
+    void anomalousWindowDoesNotPoisonRollingOrLongTermBaseline() {
+        DiffEngine engine = new DiffEngine(4, 20, 1, 0, 5, 1000, 500, 3_600_000,
+                java.util.Map.of("vibrationRms", new DiffEngine.Threshold("percent", 20)), 0.001, 1.0);
+        for (int i = 0; i < 4; i++) engine.accept(reading(1.0, i));
+        List<DeltaRecord> found = List.of();
+        for (int i = 4; i < 8; i++) found = engine.accept(reading(1.5, i));
+
+        assertEquals(1, found.size());
+        DiffEngine.MetricStats stats = engine.snapshot().get("Bridge-A").metrics().get("vibrationRms");
+        assertEquals(1.0, stats.baselineMean(), 0.001);
+        assertEquals(1.0, stats.longTermMean(), 0.001);
+    }
+
     private static Reading reading(double vibration, long ts) {
         return reading(vibration, ts, ts);
     }

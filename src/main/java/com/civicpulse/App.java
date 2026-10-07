@@ -39,7 +39,8 @@ public final class App {
             config.getLong("diff.cooldown-ms", 60_000),
                 config.getInt("diff.dropout-intervals", 5), expectedIntervalMs,
                 config.getInt("diff.max-nodes", 500), config.getLong("diff.node-ttl-ms", 3_600_000),
-                thresholds(config));
+                thresholds(config), config.getDouble("diff.long-term-alpha", 0.001),
+                config.getDouble("diff.long-term-threshold-scale", 1.0));
         CivicPulseService service = new CivicPulseService(anonymizer, diffEngine, store, alertService);
         SimulatedFleet fleet = new SimulatedFleet(anonymizer);
         TelemetrySource simulator = createSimulator(config, fleet);
