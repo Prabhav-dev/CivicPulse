@@ -8,6 +8,7 @@ import com.civicpulse.store.InMemoryDeltaStore;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +34,57 @@ class AlertServiceTest {
                 new DeltaRecord("Bridge-A", "vibrationRms", 0, 1, 1000, "DROPOUT"));
         assertEquals("TEMPLATE", alert.source());
         assertTrue(alert.text().contains("No data has arrived"));
+    }
+
+    @Test
+    void fakeGeneratorSuccessUsesConfiguredModelAndOnlyDeltaPrompt() {
+        List<String> warnings = new ArrayList<>();
+        try (AlertService service = new AlertService("fake-key", "offline-model", 1000,
+                new TemplateAlertFallback(), (model, prompt) -> {
+                    assertEquals("offline-model", model);
+                    assertTrue(prompt.contains("Bridge-A"));
+                    assertTrue(prompt.contains("pctChange=40.0"));
+                    assertTrue(prompt.contains("possibility"));
+                    assertTrue(prompt.contains("only one metric changed"));
+                    return "A possible sensor issue is indicated. Inspect the mounting and verify the next reading.";
+                }, warnings::add)) {
+            Alert alert = service.create(new DeltaRecord("Bridge-A", "vibrationRms", 40, 2, 1000),
+                    List.of(new DeltaRecord("Bridge-A", "vibrationRms", 40, 2, 1000)));
+            assertEquals("GEMINI", alert.source());
+            assertEquals(0, warnings.size());
+        }
+    }
+
+    @Test
+    void timeoutAndExceptionFallBackAndWarnOnlyOnce() {
+        List<String> warnings = new ArrayList<>();
+        try (AlertService timeout = new AlertService("fake-key", "offline-model", 20,
+                new TemplateAlertFallback(), (model, prompt) -> {
+                    Thread.sleep(1000);
+                    return "late";
+                }, warnings::add)) {
+            Alert alert = timeout.create(new DeltaRecord("Bridge-A", "tempC", 5, 2, 1000), List.of());
+            assertEquals("TEMPLATE", alert.source());
+        }
+        assertEquals(1, warnings.size());
+
+        warnings.clear();
+        try (AlertService failing = new AlertService("fake-key", "offline-model", 1000,
+                new TemplateAlertFallback(), (model, prompt) -> { throw new IllegalStateException("offline"); },
+                warnings::add)) {
+            assertEquals("TEMPLATE", failing.create(new DeltaRecord("Bridge-A", "tempC", 5, 2, 1000), List.of()).source());
+            assertEquals("TEMPLATE", failing.create(new DeltaRecord("Bridge-A", "tempC", 5, 2, 2000), List.of()).source());
+        }
+        assertEquals(1, warnings.size());
+    }
+
+    @Test
+    void blankGeneratorOutputFallsBackToTemplate() {
+        try (AlertService service = new AlertService("fake-key", "offline-model", 1000,
+                new TemplateAlertFallback(), (model, prompt) -> " ", ignored -> { })) {
+            Alert alert = service.create(new DeltaRecord("Bridge-A", "tempC", 5, 2, 1000), List.of());
+            assertEquals("TEMPLATE", alert.source());
+        }
     }
 
     @Test

@@ -147,3 +147,20 @@
   checkpoint.
 - **Privacy note:** Labels remain pseudonyms; a keyed HMAC label is not
   irreversible anonymization.
+
+## D: Template-first alerts and durable history
+
+- **What:** Templates remain the no-key path. The Gemini client is reused; its
+  configurable model is logged; failures, timeout, and blank responses fall
+  back, with one warning per service instance. A fake generator supports
+  offline tests. The prompt treats causes as possibilities and forbids
+  structural speculation from one metric. The latest 200 alerts are persisted
+  to a local JSON-lines file and loaded on restart. Gemini text is marked
+  suggested and unverified in the dashboard.
+- **Why:** External generation must remain optional, bounded, evidence-limited,
+  and unable to break local demo operation.
+- **Files touched:** Alert service/generator/history, CivicPulse service, app,
+  properties, alert tests, dashboard, README, DEMO.
+- **Test evidence:** Fake success, timeout, exception, and blank output; one
+  warning across repeated failures; file-history restart round trip. `mvn -q
+  test` passed with 34 tests at this checkpoint.

@@ -1,6 +1,7 @@
 package com.civicpulse;
 
 import com.civicpulse.alert.AlertService;
+import com.civicpulse.alert.FileAlertHistory;
 import com.civicpulse.alert.TemplateAlertFallback;
 import com.civicpulse.anonymize.Anonymizer;
 import com.civicpulse.diff.DiffEngine;
@@ -19,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.nio.file.Path;
 
 public final class App {
     private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
@@ -50,7 +52,8 @@ public final class App {
                 config.getDouble("diff.long-term-threshold-scale", 1.0),
                 config.getLong("diff.window-seconds", 0),
                 config.getDouble("diff.shape-change-fraction", 0.5));
-        CivicPulseService service = new CivicPulseService(anonymizer, diffEngine, store, alertService);
+        CivicPulseService service = new CivicPulseService(anonymizer, diffEngine, store, alertService,
+            new FileAlertHistory(Path.of(config.get("alert.history-path", "data/alerts.jsonl"))));
         SimulatedFleet fleet = new SimulatedFleet(anonymizer);
         TelemetrySource simulator = createSimulator(config, fleet);
         String apiKey = config.get("api.key", null);

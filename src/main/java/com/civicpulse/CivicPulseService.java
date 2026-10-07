@@ -2,6 +2,7 @@ package com.civicpulse;
 
 import com.civicpulse.alert.Alert;
 import com.civicpulse.alert.AlertGenerator;
+import com.civicpulse.alert.AlertHistory;
 import com.civicpulse.anonymize.Anonymizer;
 import com.civicpulse.diff.DiffEngine;
 import com.civicpulse.diff.NodeCapacityException;
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 
 public final class CivicPulseService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CivicPulseService.class);
@@ -28,6 +30,7 @@ public final class CivicPulseService {
     private final DiffEngine diffEngine;
     private final DeltaStore store;
     private final AlertGenerator alertGenerator;
+    private final AlertHistory alertHistory;
     private final Deque<Alert> alerts = new ArrayDeque<>();
     private final Object alertsLock = new Object();
     private final Object stateLock = new Object();
@@ -43,10 +46,20 @@ public final class CivicPulseService {
 
     public CivicPulseService(Anonymizer anonymizer, DiffEngine diffEngine,
                              DeltaStore store, AlertGenerator alertGenerator) {
+        this(anonymizer, diffEngine, store, alertGenerator, new AlertHistory() {
+            @Override public List<Alert> readRecent(int count) { return List.of(); }
+            @Override public void append(Alert alert) { }
+        });
+    }
+
+    public CivicPulseService(Anonymizer anonymizer, DiffEngine diffEngine,
+                             DeltaStore store, AlertGenerator alertGenerator, AlertHistory alertHistory) {
         this.anonymizer = anonymizer;
         this.diffEngine = diffEngine;
         this.store = store;
         this.alertGenerator = alertGenerator;
+        this.alertHistory = alertHistory;
+        alerts.addAll(alertHistory.readRecent(200));
     }
 
     public List<DeltaRecord> ingest(Map<String, Object> raw) {
@@ -87,6 +100,11 @@ public final class CivicPulseService {
 
     private void createAndPublish(DeltaRecord delta) {
         Alert alert = alertGenerator.create(delta, store.readRecent(delta.nodeLabel(), 5));
+        try {
+            alertHistory.append(alert);
+        } catch (RuntimeException e) {
+            LOGGER.error("Unable to persist alert history", e);
+        }
         synchronized (alertsLock) {
             alerts.addLast(alert);
             while (alerts.size() > 200) alerts.removeFirst();
@@ -119,6 +137,7 @@ public final class CivicPulseService {
             Thread.currentThread().interrupt();
         }
         alertGenerator.close();
+        alertHistory.close();
         store.close();
     }
 }

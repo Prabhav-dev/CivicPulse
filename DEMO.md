@@ -37,4 +37,5 @@ responses. For a node label shown on the dashboard, request
 `/deltas?node=<label>&limit=20`. The returned records contain the neutral label,
 metric, percentage change, position, and timestamp. Confirm `data/yggdrasil`
 contains the database and WAL files; raw MAC, serial, fine location, and sensor
-readings are not stored.
+readings are not stored. The latest 200 alerts reload from `data/alerts.jsonl`;
+Gemini-sourced text is marked “Suggested, unverified.”

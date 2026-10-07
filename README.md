@@ -17,8 +17,10 @@ java -jar target/civicpulse.jar
 
 Open [http://localhost:7070](http://localhost:7070). The default fleet is
 simulated and sends readings to the local HTTP endpoint. Without
-`GEMINI_API_KEY`, alerts use the local template fallback. To enable Gemini,
-export the key before launch; only anonymized delta fields are sent externally.
+`GEMINI_API_KEY`, alerts use the local template fallback. Alerts are stored in
+the local JSON-lines history and the latest 200 are restored on restart. Gemini
+text is labeled suggested and unverified. To enable Gemini, export the key
+before launch; only anonymized delta fields are sent externally.
 
 ```sh
 export GEMINI_API_KEY="your-key"
@@ -67,6 +69,7 @@ builds a single shaded runnable jar.
 | `sim.base-url` | `http://127.0.0.1:7070` | HTTP simulator target |
 | `gemini.model` | `gemini-3.8-flash` | Gemini model for plain-language alerts |
 | `gemini.timeout-ms` | `5000` | Maximum Gemini request wait |
+| `alert.history-path` | `data/alerts.jsonl` | Bounded local alert history |
 
 Properties can be overridden with Java system properties, for example
 `-Dstore.type=yggdrasil`. To run against Yggdrasil:
@@ -130,8 +133,8 @@ SimulatedFleet / GNU Radio
   and joinable under a secret salt; anyone who obtains that salt and a candidate
   identifier can verify a match. Use a private salt and treat labels as
   pseudonymous data. The checked-in salt and Yggdrasil key are demo defaults.
-- The per-process alert feed is not a separate durable event log. Deltas are
-  durable only when `store.type=yggdrasil` is selected.
+- Alerts are retained in a bounded local history file. Deltas are durable only
+  when `store.type=yggdrasil` is selected.
 - The API key is optional shared-secret access control, not full authentication
   or authorization. There is no TLS; keep the demo bound to loopback or a
   trusted local network.

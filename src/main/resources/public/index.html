@@ -54,6 +54,7 @@
     .alert-title { display: flex; gap: 9px; align-items: baseline; flex-wrap: wrap; font-size: 13px; font-weight: 600; }
     .source { color: var(--teal); text-transform: uppercase; font-size: 10px; letter-spacing: .08em; }
     .source.template { color: var(--amber); }
+    .verification { color: var(--muted); font-size: 11px; font-weight: 400; }
     .alert p { color: #c2ceca; line-height: 1.5; margin: 6px 0 0; font-size: 13px; }
     .empty { color: var(--muted); border-top: 1px solid var(--line); padding: 20px 0; font-size: 13px; }
     .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
@@ -150,12 +151,16 @@
       for (const alert of [...alerts].reverse()) {
         const row = document.createElement('article');
         row.className = 'alert';
-        row.innerHTML = `<time class="alert-time"></time><div><div class="alert-title"><span class="alert-node"></span><span class="alert-metric"></span><span class="source"></span></div><p class="alert-text"></p></div>`;
+        row.innerHTML = `<time class="alert-time"></time><div><div class="alert-title"><span class="alert-node"></span><span class="alert-metric"></span><span class="source"></span><span class="verification"></span></div><p class="alert-text"></p></div>`;
         row.querySelector('.alert-time').textContent = time(alert.ts);
         row.querySelector('.alert-node').textContent = alert.nodeLabel;
-        row.querySelector('.alert-metric').textContent = `${alert.metric} ${fmt(alert.pctChange, 1)}%`;
+        const change = alert.mode === 'absolute'
+          ? `${fmt(alert.absoluteChange, 1)} ${alert.metric === 'tempC' ? '°C' : 'dB'}`
+          : `${fmt(alert.pctChange, 1)}%`;
+        row.querySelector('.alert-metric').textContent = `${alert.metric} ${change}`;
         row.querySelector('.source').textContent = alert.source;
         row.querySelector('.source').classList.toggle('template', alert.source === 'TEMPLATE');
+        row.querySelector('.verification').textContent = alert.source === 'GEMINI' ? 'Suggested, unverified' : '';
         row.querySelector('.alert-text').textContent = alert.text;
         alertsElement.append(row);
       }
