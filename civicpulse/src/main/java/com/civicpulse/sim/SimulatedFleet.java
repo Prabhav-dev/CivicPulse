@@ -8,9 +8,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.LongSupplier;
 
 public final class SimulatedFleet {
     private final Anonymizer anonymizer;
+    private final LongSupplier clock;
     private final Random random = new Random(42);
     private final List<Node> nodes = List.of(
             new Node("bridge", "AA:00:00:00:00:01", "BR-101", "47.6101,-122.3301", 0.16, 18.5, -58),
@@ -22,14 +24,19 @@ public final class SimulatedFleet {
     private final Map<String, String> labelsByMac = new HashMap<>();
 
     public SimulatedFleet(Anonymizer anonymizer) {
+        this(anonymizer, System::currentTimeMillis);
+    }
+
+    public SimulatedFleet(Anonymizer anonymizer, LongSupplier clock) {
         this.anonymizer = anonymizer;
+        this.clock = clock;
         for (Node node : nodes) {
             labelsByMac.put(node.mac, anonymizer.anonymize(Map.of("nodeType", node.type, "mac", node.mac)).nodeLabel());
         }
     }
 
     public synchronized List<Map<String, Object>> sample() {
-        long now = System.currentTimeMillis();
+        long now = clock.getAsLong();
         List<Map<String, Object>> samples = new ArrayList<>(nodes.size());
         for (Node node : nodes) {
             Map<String, Object> raw = new LinkedHashMap<>();
@@ -58,7 +65,7 @@ public final class SimulatedFleet {
         if (!List.of("VIBRATION_SPIKE", "TEMP_DROP", "SENSOR_DRIFT", "DROPOUT").contains(type)) {
             throw new IllegalArgumentException("Unknown anomaly type");
         }
-        injections.put(mac, new Injection(type, System.currentTimeMillis() + durationSec * 1000L));
+        injections.put(mac, new Injection(type, clock.getAsLong() + durationSec * 1000L));
     }
 
     public List<String> nodeLabels() {

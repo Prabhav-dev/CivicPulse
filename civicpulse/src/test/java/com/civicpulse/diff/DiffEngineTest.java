@@ -49,6 +49,21 @@ class DiffEngineTest {
     }
 
     @Test
+    void sustainedCandidateCanAlertAgainAfterCooldownExpires() {
+        DiffEngine engine = new DiffEngine(2, 25, 1, 5_000);
+        engine.accept(reading(1.0, 0));
+        engine.accept(reading(1.0, 1000));
+        assertTrue(engine.accept(reading(1.5, 2000)).isEmpty());
+        assertEquals(1, engine.accept(reading(1.5, 3000)).size());
+        assertTrue(engine.accept(reading(1.5, 4000)).isEmpty());
+        assertTrue(engine.accept(reading(1.5, 5000)).isEmpty());
+        assertTrue(engine.accept(reading(1.5, 6000)).isEmpty());
+        assertTrue(engine.accept(reading(1.5, 7000)).isEmpty());
+        assertTrue(engine.accept(reading(1.5, 8000)).isEmpty());
+        assertEquals(1, engine.accept(reading(1.5, 9000)).size());
+    }
+
+    @Test
     void dropoutIsEmittedOncePerOutageAndRecoversUsingReceiveTime() {
         DiffEngine engine = new DiffEngine(2, 25, 2, 5_000, 2, 1_000);
         engine.accept(reading(1.0, 100, 0));

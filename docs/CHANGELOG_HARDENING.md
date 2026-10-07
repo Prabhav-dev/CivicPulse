@@ -201,3 +201,17 @@
 - **Test evidence:** B+Tree inclusive-range test; Yggdrasil two-label bucket
   collision, append ordering, restart high-water and persistence test; memory
   append-order test. `mvn -q -pl civicpulse -am test` passed.
+
+## G: Behavior and contract coverage
+
+- **What:** Add cooldown-reset, simulator injection/expiry/rejection,
+  concurrent-ingest, and shared memory/Yggdrasil store append-order tests. The
+  shared Yggdrasil contract also verifies restart persistence; bounded memory
+  retention has its own test because Yggdrasil retention is intentionally
+  documented as unbounded.
+- **Why:** Make the hardened contracts executable without Gemini, hardware, or
+  network access.
+- **Files touched:** Diff, simulator, route, store, and concurrency tests;
+  `SimulatedFleet` clock injection; this changelog.
+- **Test evidence:** At this checkpoint `mvn -q test` passed with 50 tests,
+  0 failures, 0 errors, 0 skipped. The command counts both Maven modules.

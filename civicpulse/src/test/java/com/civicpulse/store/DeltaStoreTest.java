@@ -27,6 +27,17 @@ class DeltaStoreTest {
     }
 
     @Test
+    void memoryStoreRetentionDropsOldestAppendedRecord() {
+        DeltaStore store = new InMemoryDeltaStore(2);
+        store.append(new DeltaRecord("Bridge-A", "vibrationRms", 10, 0, 300));
+        store.append(new DeltaRecord("Bridge-A", "vibrationRms", 20, 1, 100));
+        store.append(new DeltaRecord("Bridge-A", "vibrationRms", 30, 2, 200));
+
+        assertEquals(List.of(new DeltaRecord("Bridge-A", "vibrationRms", 20, 1, 100),
+                new DeltaRecord("Bridge-A", "vibrationRms", 30, 2, 200)), store.readRecent("Bridge-A", 10));
+    }
+
+    @Test
     void yggdrasilStorePersistsCompactDeltaRecords() throws Exception {
         DeltaRecord expected = new DeltaRecord("Bridge-A", "vibrationRms", 40.5, 3, 123456);
         String key = "00112233445566778899aabbccddeeff";
