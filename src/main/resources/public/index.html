@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>CivicPulse | Infrastructure monitor</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #e9efed;
+      --muted: #91a19c;
+      --line: #263532;
+      --panel: #121d1b;
+      --base: #0b1211;
+      --teal: #65d7bc;
+      --amber: #f3bf61;
+      --coral: #ff7f70;
+      --green: #8cdda0;
+      --sans: "Avenir Next", "Segoe UI", sans-serif;
+      font-family: var(--sans);
+      background: var(--base);
+      color: var(--ink);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: linear-gradient(135deg, #101918 0%, var(--base) 48%, #151713 100%); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px clamp(18px, 4vw, 54px); border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: baseline; gap: 14px; }
+    .brand strong { font-size: 22px; letter-spacing: 0; }
+    .brand span, .muted { color: var(--muted); font-size: 13px; }
+    .live { display: flex; align-items: center; gap: 9px; color: var(--green); font-size: 13px; }
+    .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 14px #8cdda066; }
+    main { max-width: 1440px; margin: 0 auto; padding: 24px clamp(18px, 4vw, 54px) 50px; }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 0 14px; }
+    h1 { font-size: 19px; margin: 0; font-weight: 600; }
+    h2 { font-size: 16px; margin: 0; font-weight: 600; }
+    .node-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+    .node { background: var(--panel); padding: 16px; min-width: 0; animation: arrive 440ms both; }
+    .node:nth-child(2) { animation-delay: 40ms; } .node:nth-child(3) { animation-delay: 80ms; } .node:nth-child(4) { animation-delay: 120ms; } .node:nth-child(5) { animation-delay: 160ms; }
+    .node-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+    .node-name { font-weight: 650; overflow-wrap: anywhere; }
+    .node-type { margin-top: 3px; color: var(--muted); font-size: 12px; text-transform: capitalize; }
+    .signal { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: var(--teal); margin-top: 5px; }
+    .signal.stale { background: var(--amber); }
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 8px; margin-top: 22px; }
+    .metric-label { color: var(--muted); font-size: 11px; }
+    .metric-value { margin-top: 4px; font-size: 18px; font-variant-numeric: tabular-nums; }
+    .unit { color: var(--muted); font-size: 11px; margin-left: 3px; }
+    .lower { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr); gap: 38px; margin-top: 36px; }
+    .feed { border-top: 1px solid var(--line); }
+    .alert { display: grid; grid-template-columns: 70px 1fr; gap: 15px; border-bottom: 1px solid var(--line); padding: 16px 0; animation: arrive 300ms both; }
+    .alert-time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; padding-top: 2px; }
+    .alert-title { display: flex; gap: 9px; align-items: baseline; flex-wrap: wrap; font-size: 13px; font-weight: 600; }
+    .source { color: var(--teal); text-transform: uppercase; font-size: 10px; letter-spacing: .08em; }
+    .source.template { color: var(--amber); }
+    .alert p { color: #c2ceca; line-height: 1.5; margin: 6px 0 0; font-size: 13px; }
+    .empty { color: var(--muted); border-top: 1px solid var(--line); padding: 20px 0; font-size: 13px; }
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
+    select, input, button { min-width: 0; height: 40px; color: var(--ink); background: #0e1715; border: 1px solid #3a4d47; border-radius: 3px; padding: 0 10px; font: inherit; }
+    select:focus, input:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+    button { grid-column: 1 / -1; border-color: #4aa98f; color: var(--teal); font-weight: 650; cursor: pointer; }
+    button:hover { background: #18312b; }
+    .notice { min-height: 20px; margin-top: 10px; color: var(--muted); font-size: 12px; }
+    @keyframes arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 1050px) { .node-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .lower { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) { header { padding: 15px 18px; } .brand { display: grid; gap: 3px; } .node-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .node { padding: 13px; } .metrics { margin-top: 16px; } .metric-value { font-size: 16px; } .lower { margin-top: 28px; gap: 22px; } .alert { grid-template-columns: 55px 1fr; gap: 10px; } }
+    @media (max-width: 390px) { .node-grid { grid-template-columns: 1fr; } .controls { grid-template-columns: 1fr; } button { grid-column: 1; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand"><strong>CivicPulse</strong><span>Infrastructure monitor</span></div>
+    <div class="live"><i></i><span id="connection">Connecting</span></div>
+  </header>
+  <main>
+    <section aria-labelledby="nodes-title">
+      <div class="section-head"><h1 id="nodes-title">Live nodes</h1><span class="muted" id="node-count">Waiting for telemetry</span></div>
+      <div class="node-grid" id="nodes"></div>
+    </section>
+    <div class="lower">
+      <section aria-labelledby="alerts-title">
+        <div class="section-head"><h2 id="alerts-title">Maintenance alerts</h2><span class="muted">Most recent first</span></div>
+        <div class="feed" id="alerts"><div class="empty">No threshold-crossing deltas yet.</div></div>
+      </section>
+      <section aria-labelledby="inject-title">
+        <div class="section-head"><h2 id="inject-title">Inject anomaly</h2></div>
+        <form id="inject-form">
+          <div class="controls">
+            <label>Node<select id="node-select" name="node" required></select></label>
+            <label>Signal<select name="type"><option>VIBRATION_SPIKE</option><option>TEMP_DROP</option><option>SENSOR_DRIFT</option><option>DROPOUT</option></select></label>
+            <label>Duration (seconds)<input name="durationSec" type="number" min="1" max="3600" value="20" required></label>
+            <button type="submit">Inject signal</button>
+          </div>
+          <div class="notice" id="notice" role="status"></div>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script>
+    const nodesElement = document.querySelector('#nodes');
+    const alertsElement = document.querySelector('#alerts');
+    const nodeSelect = document.querySelector('#node-select');
+    const connection = document.querySelector('#connection');
+    const fmt = (value, digits = 2) => value == null || !Number.isFinite(value) ? '—' : Number(value).toFixed(digits);
+    const time = (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    async function refreshStatus() {
+      const response = await fetch('/status');
+      if (!response.ok) throw new Error('status request failed');
+      const nodes = await response.json();
+      connection.textContent = 'Live';
+      document.querySelector('#node-count').textContent = `${Object.keys(nodes).length} nodes reporting`;
+      nodesElement.replaceChildren();
+      const selected = nodeSelect.value;
+      nodeSelect.replaceChildren();
+      for (const node of Object.values(nodes)) {
+        const option = document.createElement('option');
+        option.value = node.nodeLabel;
+        option.textContent = node.nodeLabel;
+        nodeSelect.append(option);
+        const item = document.createElement('article');
+        item.className = 'node';
+        const old = Date.now() - node.ts > 5000;
+        item.innerHTML = `<div class="node-top"><div><div class="node-name"></div><div class="node-type"></div></div><i class="signal ${old ? 'stale' : ''}"></i></div>
+          <div class="metrics"><div><div class="metric-label">Vibration RMS</div><div class="metric-value">${fmt(node.vibrationRms)}<span class="unit">g</span></div></div>
+          <div><div class="metric-label">Temperature</div><div class="metric-value">${fmt(node.tempC, 1)}<span class="unit">°C</span></div></div>
+          <div><div class="metric-label">RF power</div><div class="metric-value">${fmt(node.rfPowerDb, 1)}<span class="unit">dB rel.</span></div></div>
+          <div><div class="metric-label">Updated</div><div class="metric-value">${time(node.ts)}</div></div></div>`;
+        item.querySelector('.node-name').textContent = node.nodeLabel;
+        item.querySelector('.node-type').textContent = node.nodeType;
+        nodesElement.append(item);
+      }
+      if (selected && [...nodeSelect.options].some(option => option.value === selected)) nodeSelect.value = selected;
+    }
+
+    async function refreshAlerts() {
+      const response = await fetch('/alerts?limit=20');
+      if (!response.ok) throw new Error('alerts request failed');
+      const alerts = await response.json();
+      if (!alerts.length) {
+        alertsElement.innerHTML = '<div class="empty">No threshold-crossing deltas yet.</div>';
+        return;
+      }
+      alertsElement.replaceChildren();
+      for (const alert of [...alerts].reverse()) {
+        const row = document.createElement('article');
+        row.className = 'alert';
+        row.innerHTML = `<time class="alert-time"></time><div><div class="alert-title"><span class="alert-node"></span><span class="alert-metric"></span><span class="source"></span></div><p class="alert-text"></p></div>`;
+        row.querySelector('.alert-time').textContent = time(alert.ts);
+        row.querySelector('.alert-node').textContent = alert.nodeLabel;
+        row.querySelector('.alert-metric').textContent = `${alert.metric} ${fmt(alert.pctChange, 1)}%`;
+        row.querySelector('.source').textContent = alert.source;
+        row.querySelector('.source').classList.toggle('template', alert.source === 'TEMPLATE');
+        row.querySelector('.alert-text').textContent = alert.text;
+        alertsElement.append(row);
+      }
+    }
+
+    async function refresh() {
+      try { await Promise.all([refreshStatus(), refreshAlerts()]); connection.textContent = 'Live'; }
+      catch { connection.textContent = 'Reconnecting'; }
+    }
+
+    document.querySelector('#inject-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      const values = Object.fromEntries(new FormData(event.currentTarget));
+      values.durationSec = Number(values.durationSec);
+      const notice = document.querySelector('#notice');
+      try {
+        const response = await fetch('/sim/inject', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || 'Injection failed');
+        notice.textContent = 'Anomaly injected';
+      } catch (error) { notice.textContent = error.message; }
+    });
+
+    refresh();
+    setInterval(refresh, 2000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+target/
+data/
+*.log
+__pycache__/
+wget-log
+*.py[cod]
+/Yggdrasil-Blind_Storage/.git/
