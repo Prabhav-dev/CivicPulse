@@ -29,6 +29,18 @@ export GEMINI_API_KEY="your-key"
 java -jar target/civicpulse.jar
 ```
 
+## Deploy to Render
+
+CivicPulse is cloud-ready and can be deployed directly to [Render](https://render.com) as a containerized web application with an interactive user interface:
+
+- **Blueprint Setup:** Connect your repository to Render and use [`render.yaml`](render.yaml) for automated configuration.
+- **Docker Multi-Stage Build:** Reproducible container packaging using [`Dockerfile`](Dockerfile).
+- **Health Checks:** Native `/health` endpoint for zero-downtime rolling deploys.
+- **Dynamic Port & Host:** Automatically detects cloud runtime (`PORT` / `RENDER`) to bind to `0.0.0.0`.
+- **Web Interface:** Live telemetry gauges, baseline delta inspection, anomaly injection, and AI alerts directly in your browser.
+
+See the complete [Render Deployment Guide](docs/RENDER_DEPLOYMENT.md) for step-by-step instructions.
+
 The root Maven project builds two local modules: `yggdrasil/` (the storage
 engine, with no runtime dependencies) and `civicpulse/` (the application).
 Yggdrasil's `Yggdrasil` package remains unchanged. The server jar excludes its

@@ -40,6 +40,9 @@ class CivicPulseRoutesTest {
             assertEquals(200, request(port, "/ingest", "POST",
                     "{\"nodeType\":\"bridge\",\"mac\":\"AA\",\"vibrationRms\":0.1}", "test-key").statusCode());
             assertEquals(200, request(port, "/deltas?node=Bridge-A", "GET", null, "test-key").statusCode());
+            HttpResponse<String> health = request(port, "/health", "GET", null, null);
+            assertEquals(200, health.statusCode());
+            assertEquals("UP", JSON.readTree(health.body()).get("status").asText());
         } finally {
             app.stop();
             service.close();

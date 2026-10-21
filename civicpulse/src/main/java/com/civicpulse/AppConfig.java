@@ -24,17 +24,41 @@ public final class AppConfig {
     }
 
     public String get(String key, String fallback) {
-        String envName = switch (key) {
-            case "anonymizer.salt" -> "CIVICPULSE_ANONYMIZER_SALT";
-            case "yggdrasil.key" -> "CIVICPULSE_YGGDRASIL_KEY";
-            case "api.key" -> "CIVICPULSE_API_KEY";
-            default -> null;
-        };
-        if (envName != null) {
-            String envValue = environment.get(envName);
-            if (envValue != null && !envValue.isBlank()) return envValue;
+        String envValue = resolveEnvironment(key);
+        if (envValue != null && !envValue.isBlank()) return envValue;
+
+        String sysProp = System.getProperty(key);
+        if (sysProp != null && !sysProp.isBlank()) return sysProp;
+
+        if ("server.host".equals(key) && (environment.containsKey("PORT") || environment.containsKey("RENDER"))) {
+            return "0.0.0.0";
         }
-        return System.getProperty(key, values.getProperty(key, fallback));
+
+        return values.getProperty(key, fallback);
+    }
+
+    private String resolveEnvironment(String key) {
+        return switch (key) {
+            case "server.port" -> firstNonBlank(environment.get("PORT"),
+                    environment.get("CIVICPULSE_PORT"), environment.get("SERVER_PORT"));
+            case "server.host" -> firstNonBlank(environment.get("HOST"),
+                    environment.get("CIVICPULSE_HOST"), environment.get("SERVER_HOST"));
+            case "anonymizer.salt" -> environment.get("CIVICPULSE_ANONYMIZER_SALT");
+            case "yggdrasil.key" -> environment.get("CIVICPULSE_YGGDRASIL_KEY");
+            case "api.key" -> environment.get("CIVICPULSE_API_KEY");
+            case "gemini.api-key" -> firstNonBlank(environment.get("GEMINI_API_KEY"), environment.get("CIVICPULSE_GEMINI_API_KEY"));
+            default -> {
+                String normalized = "CIVICPULSE_" + key.replace('.', '_').replace('-', '_').toUpperCase();
+                yield environment.get(normalized);
+            }
+        };
+    }
+
+    private static String firstNonBlank(String... candidates) {
+        for (String candidate : candidates) {
+            if (candidate != null && !candidate.isBlank()) return candidate;
+        }
+        return null;
     }
 
     public int getInt(String key, int fallback) {

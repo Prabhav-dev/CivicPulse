@@ -1,0 +1,10 @@
+target/
+civicpulse/target/
+yggdrasil/target/
+Yggdrasil-Blind_Storage/
+.git/
+.github/
+.vscode/
+data/
+*.pdf
+.DS_Store

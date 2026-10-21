@@ -1,0 +1,23 @@
+# Render Blueprint specification for CivicPulse
+# Documentation: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: civicpulse
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: CIVICPULSE_ANONYMIZER_SALT
+        generateValue: true
+      - key: CIVICPULSE_YGGDRASIL_KEY
+        generateValue: true
+      - key: CIVICPULSE_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

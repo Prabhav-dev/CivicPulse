@@ -58,12 +58,14 @@ public final class App {
         TelemetrySource simulator = createSimulator(config, fleet);
         String apiKey = config.get("api.key", null);
         if (apiKey == null || apiKey.isBlank()) LOGGER.warn("CIVICPULSE_API_KEY is unset; mutation routes are unauthenticated");
+        int port = config.getInt("server.port", 7070);
+        String host = config.get("server.host", "127.0.0.1");
         Javalin app;
         try {
-                app = CivicPulseRoutes.create(service, simulator, config.getInt("server.port", 7070),
+                app = CivicPulseRoutes.create(service, simulator, port,
                     config.getInt("request.max-body-bytes", 8192),
                 config.getLong("ingest.timestamp-window-ms", 300_000),
-                config.get("server.host", "127.0.0.1"), apiKey,
+                host, apiKey,
                 config.getBoolean("sim.enabled", true) && demoMode);
         } catch (RuntimeException e) {
             service.close();
@@ -83,7 +85,7 @@ public final class App {
             app.stop();
             service.close();
         }, "civicpulse-shutdown"));
-        LOGGER.info("CivicPulse listening on http://localhost:{}", config.getInt("server.port", 7070));
+        LOGGER.info("CivicPulse listening on http://{}:{}", host, port);
     }
 
     static DeltaStore createStore(AppConfig config) {
@@ -112,7 +114,11 @@ public final class App {
         long interval = config.getLong("sim.interval-ms", 1000);
         double compression = config.getDouble("sim.time-compression", 5);
         if ("inprocess".equalsIgnoreCase(source)) return new InProcessSimulator(fleet, interval, compression);
-        return new HttpSimulator(fleet, config.get("sim.base-url", "http://127.0.0.1:7070"), interval, compression);
+        int port = config.getInt("server.port", 7070);
+        String defaultUrl = "http://127.0.0.1:" + port;
+        String configuredUrl = config.get("sim.base-url", defaultUrl);
+        String url = ("http://127.0.0.1:7070".equals(configuredUrl) && port != 7070) ? defaultUrl : configuredUrl;
+        return new HttpSimulator(fleet, url, interval, compression);
     }
 
         private static java.util.Map<String, DiffEngine.Threshold> thresholds(AppConfig config) {

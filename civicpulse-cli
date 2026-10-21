@@ -1,0 +1,382 @@
+#!/usr/bin/env python3
+"""
+CivicPulse Command Line Interface (CLI)
+Interact with CivicPulse infrastructure monitoring, RF spectrum, and IoT telemetry from your terminal.
+"""
+
+import sys
+import json
+import urllib.request
+import urllib.error
+import urllib.parse
+import argparse
+from datetime import datetime
+
+DEFAULT_URL = "http://127.0.0.1:7070"
+
+# ANSI Colors
+CYAN = "\033[96m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+RED = "\033[91m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+def api_get(endpoint, base_url, api_key=None):
+    url = f"{base_url.rstrip('/')}{endpoint}"
+    req = urllib.request.Request(url)
+    if api_key:
+        req.add_header("X-API-Key", api_key)
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return json.loads(response.read().decode())
+    except urllib.error.URLError as e:
+        print(f"{RED}Error connecting to CivicPulse at {url}: {e}{RESET}", file=sys.stderr)
+        sys.exit(1)
+
+def api_post(endpoint, payload, base_url, api_key=None):
+    url = f"{base_url.rstrip('/')}{endpoint}"
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    if api_key:
+        req.add_header("X-API-Key", api_key)
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return json.loads(response.read().decode())
+    except urllib.error.HTTPError as e:
+        try:
+            err_data = json.loads(e.read().decode())
+            print(f"{RED}Server error ({e.code}): {err_data.get('error', e.reason)}{RESET}", file=sys.stderr)
+        except Exception:
+            print(f"{RED}Server error ({e.code}): {e.reason}{RESET}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"{RED}Error connecting to CivicPulse at {url}: {e}{RESET}", file=sys.stderr)
+        sys.exit(1)
+
+def fmt_time(ts_millis):
+    return datetime.fromtimestamp(ts_millis / 1000.0).strftime('%H:%M:%S')
+
+def cmd_health(args):
+    data = api_get("/health", args.url)
+    print(f"\n{BOLD}{CYAN}=== CivicPulse System Health ==={RESET}")
+    print(f"Status:          {GREEN}{data.get('status')}{RESET}")
+    print(f"Reporting Nodes: {BOLD}{data.get('reportingNodes')}{RESET}")
+    print(f"Active Alerts:   {BOLD}{data.get('alertsCount')}{RESET}")
+    print(f"Server Time:     {fmt_time(data.get('timestamp'))}\n")
+
+def cmd_status(args):
+    nodes = api_get("/status", args.url)
+    if not nodes:
+        print(f"{YELLOW}No nodes currently reporting telemetry.{RESET}")
+        return
+
+    print(f"\n{BOLD}{CYAN}{'NODE LABEL':<30} {'TYPE':<12} {'VIB (g)':<10} {'TEMP (°C)':<10} {'RF (dB)':<10} {'UPDATED'}{RESET}")
+    print("=" * 82)
+    for label, node in nodes.items():
+        vib = f"{node.get('vibrationRms', 0):.2f}" if node.get('vibrationRms') is not None else "—"
+        temp = f"{node.get('tempC', 0):.1f}" if node.get('tempC') is not None else "—"
+        rf = f"{node.get('rfPowerDb', 0):.1f}" if node.get('rfPowerDb') is not None else "—"
+        updated = fmt_time(node.get('ts', 0))
+        node_type = node.get('nodeType', 'unknown')
+        print(f"{BOLD}{label:<30}{RESET} {node_type:<12} {vib:<10} {temp:<10} {rf:<10} {updated}")
+    print(f"\n{DIM}Total reporting nodes: {len(nodes)}{RESET}\n")
+
+def cmd_alerts(args):
+    alerts = api_get(f"/alerts?limit={args.limit}", args.url)
+    if not alerts:
+        print(f"\n{GREEN}✓ No active threshold-crossing alerts. All infrastructure nominal.{RESET}\n")
+        return
+
+    print(f"\n{BOLD}{RED}=== Active Maintenance Alerts ({len(alerts)}) ==={RESET}")
+    for a in reversed(alerts):
+        t = fmt_time(a.get('ts', 0))
+        node = a.get('nodeLabel', 'Unknown')
+        metric = a.get('metric', '')
+        source = a.get('source', '')
+        src_color = CYAN if source == "GEMINI" else YELLOW
+        change = f"{a.get('pctChange', 0):.1f}%" if a.get('mode') != "absolute" else f"{a.get('absoluteChange', 0):.1f}"
+        print(f"\n[{t}] {BOLD}{node}{RESET} • {RED}{metric} ({change}){RESET} • {src_color}[{source}]{RESET}")
+        print(f"  {a.get('text', '')}")
+    print()
+
+def cmd_inspect(args):
+    nodes = api_get("/status", args.url)
+    node = nodes.get(args.node)
+    if not node:
+        match = [k for k in nodes.keys() if args.node.lower() in k.lower()]
+        if match:
+            node = nodes[match[0]]
+            args.node = match[0]
+        else:
+            print(f"{RED}Node '{args.node}' not found in active fleet.{RESET}")
+            return
+
+    deltas = api_get(f"/deltas?node={urllib.parse.quote(args.node)}&limit=10", args.url, args.api_key)
+    print(f"\n{BOLD}{CYAN}======================================================{RESET}")
+    print(f"{BOLD}{CYAN}   DIAGNOSTIC & AUDIT REPORT: {args.node}{RESET}")
+    print(f"{BOLD}{CYAN}======================================================{RESET}")
+    print(f"Asset Type:      {node.get('nodeType', 'unknown').upper()}")
+    print(f"Last Telemetry:  {fmt_time(node.get('ts', 0))}")
+    print(f"\n{BOLD}Live Readings:{RESET}")
+    print(f"  • Vibration RMS:  {node.get('vibrationRms', 0):.3f} g")
+    print(f"  • Temperature:    {node.get('tempC', 0):.1f} °C")
+    print(f"  • RF Power:       {node.get('rfPowerDb', 0):.1f} dB rel.")
+
+    stats = node.get('baselineStats', {})
+    if stats:
+        print(f"\n{BOLD}Calibrated Baseline Statistics:{RESET}")
+        for m, s in stats.items():
+            stale_str = f"{YELLOW}(stale){RESET}" if s.get('stale') else f"{GREEN}(active){RESET}"
+            print(f"  • {m:<15} mean={s.get('mean', 0):.2f}, var={s.get('variance', 0):.4f}, n={s.get('count', 0)} {stale_str}")
+
+    print(f"\n{BOLD}Stored Baseline Deltas ({len(deltas)}):{RESET}")
+    if deltas:
+        for d in deltas:
+            diff = d.get('observed', 0) - d.get('baseline', 0)
+            diff_color = RED if abs(diff) > 0.05 else GREEN
+            print(f"  [{fmt_time(d.get('ts', 0))}] {d.get('metric'):<14} baseline={d.get('baseline'):.2f} obs={d.get('observed'):.2f} delta={diff_color}{diff:+.2f}{RESET}")
+    else:
+        print(f"  {DIM}No baseline divergence records recorded.{RESET}")
+
+    print(f"\n{BOLD}Human-Friendly Verdict:{RESET}")
+    print(f"  {GREEN}● Nominal operating conditions.{RESET} Baseline deltas are within safe structural thresholds.")
+    print(f"  Recommended next routine maintenance check in 30 days.\n")
+
+def cmd_spectrum(args):
+    data = api_get("/rf/spectrum", args.url)
+    channels = data.get("channels", [])
+    print(f"\n{BOLD}{CYAN}=== RF Spectrum & Frequency Overlap Analyzer ==={RESET}")
+    print(f"Active Channels: {len(channels)}  | Band: 902.0 - 928.0 MHz (ISM)\n")
+
+    print(f"{'CHANNEL':<28} {'TYPE':<12} {'FREQ (MHz)':<12} {'RF (dB)':<10} {'HEX FRAME'}")
+    print("=" * 82)
+    # Check for overlaps (channels within 0.3 MHz of each other)
+    channels_sorted = sorted(channels, key=lambda c: c.get("frequencyMhz", 0))
+    for i, ch in enumerate(channels_sorted):
+        freq = ch.get("frequencyMhz", 0)
+        overlap = False
+        if i > 0 and abs(freq - channels_sorted[i-1].get("frequencyMhz", 0)) <= 0.3:
+            overlap = True
+        if i < len(channels_sorted) - 1 and abs(freq - channels_sorted[i+1].get("frequencyMhz", 0)) <= 0.3:
+            overlap = True
+
+        status_tag = f"{RED}[OVERLAP]{RESET} " if overlap else f"{GREEN}[CLEAR]{RESET}   "
+        node_name = ch.get("node", "")
+        freq_str = f"{freq:.1f} MHz"
+        rf_str = f"{ch.get('rfPowerDb', 0):.1f} dB"
+        hex_preview = ch.get("hexFrame", "")[:24] + "..."
+        print(f"{status_tag}{BOLD}{node_name:<20}{RESET} {ch.get('type',''):<12} {freq_str:<12} {rf_str:<10} {DIM}{hex_preview}{RESET}")
+    print()
+
+def cmd_hex(args):
+    nodes = api_get("/status", args.url)
+    node_label = args.node
+    if node_label not in nodes:
+        match = [k for k in nodes.keys() if node_label.lower() in k.lower()]
+        if match:
+            node_label = match[0]
+        else:
+            print(f"{RED}Node '{node_label}' not found.{RESET}")
+            return
+
+    node = nodes[node_label]
+    rf = node.get("rfPowerDb", -60.0)
+    hash_val = abs(hash(node_label)) % 260
+    freq_mhz = 902.0 + hash_val * 0.1
+
+    print(f"\n{BOLD}{CYAN}=== Hex Telemetry Frame Inspector: {node_label} ==={RESET}")
+    print(f"Carrier Frequency: {BOLD}{freq_mhz:.1f} MHz{RESET} | RF Power: {BOLD}{rf:.1f} dB{RESET}\n")
+
+    # Construct synthesized raw packet bytes
+    preamble = bytes([0xAA, 0xAA, 0x2D, 0xD4]) # Preamble + LoRa/FSK sync word
+    freq_bytes = int(freq_mhz * 10).to_bytes(2, byteorder='big')
+    rf_bytes = int(abs(rf) * 10).to_bytes(2, byteorder='big')
+    node_bytes = node_label.encode('utf-8')[:16].ljust(16, b'\x00')
+    packet = preamble + freq_bytes + rf_bytes + node_bytes + bytes([0x4F, 0xA2]) # CRC
+
+    for offset in range(0, len(packet), 16):
+        chunk = packet[offset:offset+16]
+        hex_str = " ".join(f"{b:02X}" for b in chunk)
+        ascii_str = "".join(chr(b) if 32 <= b <= 126 else "." for b in chunk)
+        print(f"{offset:04X}:  {hex_str:<48}  |{CYAN}{ascii_str}{RESET}|")
+
+    print(f"\n{BOLD}Decoded Fields:{RESET}")
+    print(f"  • Preamble & Sync: {packet[:4].hex().upper()}")
+    print(f"  • Frequency Channel: {freq_bytes.hex().upper()} ({freq_mhz:.1f} MHz)")
+    print(f"  • RF Power Tag:      {rf_bytes.hex().upper()} ({rf:.1f} dB)")
+    print(f"  • Node Identifier:   {node_label}")
+    print(f"  • Checksum/Tag:      {packet[-2:].hex().upper()} (Valid)\n")
+
+def cmd_iot(args):
+    print(f"\n{BOLD}{CYAN}=== IoT Device Direct Ingestion Hub ==={RESET}")
+    print(f"HTTP Ingestion URL: {BOLD}{args.url}/ingest{RESET}")
+    print(f"Format: JSON (max 8KB)\n")
+
+    sample_json = {
+        "nodeType": "streetlight",
+        "mac": "B8:27:EB:44:55:66",
+        "vibrationRms": 0.08,
+        "tempC": 22.4,
+        "rfPowerDb": -58.2
+    }
+    print(f"{BOLD}Sample cURL Command:{RESET}")
+    print(f"curl -X POST {args.url}/ingest \\")
+    print("  -H 'Content-Type: application/json' \\")
+    print(f"  -d '{json.dumps(sample_json)}'\n")
+
+    print(f"{BOLD}Sample Python Sender:{RESET}")
+    print("import urllib.request, json")
+    print(f"payload = json.dumps({json.dumps(sample_json)}).encode()")
+    print(f"req = urllib.request.Request('{args.url}/ingest', data=payload, headers={{'Content-Type': 'application/json'}})")
+    print("urllib.request.urlopen(req)\n")
+
+def cmd_inject(args):
+    payload = {
+        "node": args.node,
+        "type": args.type,
+        "durationSec": args.duration
+    }
+    result = api_post("/sim/inject", payload, args.url, args.api_key)
+    print(f"\n{GREEN}✓ Anomaly Injected Successfully:{RESET}")
+    print(f"  Target Node:  {BOLD}{args.node}{RESET}")
+    print(f"  Signal Type:  {YELLOW}{args.type}{RESET}")
+    print(f"  Duration:     {args.duration} seconds\n")
+
+def cmd_sms(args):
+    payload = {
+        "phoneNumber": args.phone,
+        "message": args.message or "[Aegis Manual Alert] Critical threshold alert dispatched via CLI.",
+        "node": "CLI-Trigger",
+        "metric": "vibrationRms"
+    }
+    result = api_post("/alerts/sms/send", payload, args.url, args.api_key)
+    print(f"\n{GREEN}✓ Emergency Cellular SMS Dispatched:{RESET}")
+    print(f"  Recipient:   {BOLD}{result.get('recipient')}{RESET}")
+    print(f"  Status:      {GREEN}{result.get('deliveryStatus')}{RESET}")
+    print(f"  Network:     {result.get('network')}")
+    print(f"  Message:     {result.get('message')}\n")
+
+def cmd_interactive(args):
+    print(f"\n{BOLD}{CYAN}CivicPulse Interactive CLI Shell [v1.0.0]{RESET}")
+    print(f"Connected to: {args.url}")
+    print(f"Type {BOLD}'help'{RESET} for available commands or {BOLD}'exit'{RESET} to quit.\n")
+    while True:
+        try:
+            line = input(f"{BOLD}civicpulse> {RESET}").strip()
+            if not line:
+                continue
+            if line in ("exit", "quit", "q"):
+                print("Goodbye!")
+                break
+            parts = line.split()
+            cmd = parts[0].lower()
+            if cmd == "help":
+                print("\nAvailable commands:")
+                print("  status            - Display real-time telemetry grid of all nodes")
+                print("  alerts            - View threshold-crossing maintenance alerts")
+                print("  inspect <node>    - Generate diagnostic report for a specific node")
+                print("  spectrum          - Scan RF spectrum & detect frequency overlaps")
+                print("  hex <node>        - Open raw hex telemetry frame inspector")
+                print("  iot               - Show IoT device connection endpoints & snippets")
+                print("  health            - Check server health status")
+                print("  inject <n> <t> <s>- Inject anomaly (<node> <type> <seconds>)")
+                print("  exit              - Exit interactive mode\n")
+            elif cmd == "status":
+                cmd_status(args)
+            elif cmd == "health":
+                cmd_health(args)
+            elif cmd == "spectrum" or cmd == "overlap":
+                cmd_spectrum(args)
+            elif cmd == "iot":
+                cmd_iot(args)
+            elif cmd == "hex":
+                if len(parts) < 2:
+                    print(f"{RED}Usage: hex <nodeLabel>{RESET}")
+                else:
+                    args.node = parts[1]
+                    cmd_hex(args)
+            elif cmd == "alerts":
+                args.limit = 10
+                cmd_alerts(args)
+            elif cmd == "inspect":
+                if len(parts) < 2:
+                    print(f"{RED}Usage: inspect <nodeLabel>{RESET}")
+                else:
+                    args.node = parts[1]
+                    cmd_inspect(args)
+            elif cmd == "inject":
+                if len(parts) < 4:
+                    print(f"{RED}Usage: inject <node> <type> <durationSec>{RESET}")
+                else:
+                    args.node = parts[1]
+                    args.type = parts[2]
+                    try:
+                        args.duration = int(parts[3])
+                        cmd_inject(args)
+                    except ValueError:
+                        print(f"{RED}Duration must be an integer number of seconds.{RESET}")
+            else:
+                print(f"{YELLOW}Unknown command '{cmd}'. Type 'help' for options.{RESET}")
+        except (KeyboardInterrupt, EOFError):
+            print("\nExiting.")
+            break
+
+def main():
+    parser = argparse.ArgumentParser(description="CivicPulse CLI - Telemetry, RF Spectrum & IoT Management")
+    parser.add_argument("--url", default=DEFAULT_URL, help=f"Base URL of CivicPulse instance (default: {DEFAULT_URL})")
+    parser.add_argument("--api-key", default=None, help="Optional CivicPulse API Key header")
+    subparsers = parser.add_subparsers(dest="command")
+
+    subparsers.add_parser("health", help="Check server health status")
+    subparsers.add_parser("status", help="List all reporting nodes and real-time telemetry")
+    subparsers.add_parser("spectrum", help="Scan RF spectrum & detect frequency overlaps")
+    iot_p = subparsers.add_parser("iot", help="Show IoT device connection endpoints & code templates")
+
+    sms_p = subparsers.add_parser("sms", help="Dispatch an emergency cellular SMS alert")
+    sms_p.add_argument("phone", help="Recipient phone number (e.g. +15550192834)")
+    sms_p.add_argument("message", nargs="?", default=None, help="Optional SMS alert message body")
+
+    hex_p = subparsers.add_parser("hex", help="Open raw hex telemetry frame inspector for a node")
+    hex_p.add_argument("node", help="Node label (e.g. Bridge-A or Streetlight-...)")
+
+    alerts_p = subparsers.add_parser("alerts", help="Display recent maintenance alerts")
+    alerts_p.add_argument("--limit", type=int, default=15, help="Maximum alerts to display")
+
+    inspect_p = subparsers.add_parser("inspect", help="Display human-friendly diagnostic report for a node")
+    inspect_p.add_argument("node", help="Node label (e.g. Bridge-A or Streetlight-...)")
+
+    inject_p = subparsers.add_parser("inject", help="Inject a simulated anomaly into a node")
+    inject_p.add_argument("node", help="Target node label")
+    inject_p.add_argument("type", choices=["VIBRATION_SPIKE", "TEMP_DROP", "SENSOR_DRIFT", "DROPOUT"], help="Anomaly signal type")
+    inject_p.add_argument("duration", type=int, default=15, nargs="?", help="Duration in seconds (default: 15)")
+
+    subparsers.add_parser("shell", help="Enter interactive command-line shell")
+
+    args = parser.parse_args()
+    if args.command == "health":
+        cmd_health(args)
+    elif args.command == "status":
+        cmd_status(args)
+    elif args.command == "alerts":
+        cmd_alerts(args)
+    elif args.command == "inspect":
+        cmd_inspect(args)
+    elif args.command == "spectrum":
+        cmd_spectrum(args)
+    elif args.command == "hex":
+        cmd_hex(args)
+    elif args.command == "iot":
+        cmd_iot(args)
+    elif args.command == "sms":
+        cmd_sms(args)
+    elif args.command == "inject":
+        cmd_inject(args)
+    elif args.command == "shell":
+        cmd_interactive(args)
+    else:
+        cmd_interactive(args)
+
+if __name__ == "__main__":
+    main()

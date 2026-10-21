@@ -5,3 +5,4 @@ __pycache__/
 wget-log
 *.py[cod]
 /Yggdrasil-Blind_Storage/
+.vscode/

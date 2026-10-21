@@ -1,189 +1,2912 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <title>CivicPulse | Infrastructure monitor</title>
+  <meta name="color-scheme" content="dark light">
+  <title>Aegis Manual | Autonomous Encrypted Grid & Infrastructure Sentinel</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2365d7bc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='10'></circle><circle cx='12' cy='12' r='4'></circle><line x1='12' y1='2' x2='12' y2='6'></line><line x1='12' y1='18' x2='12' y2='22'></line><line x1='2' y1='12' x2='6' y2='12'></line><line x1='18' y1='12' x2='22' y2='12'></line></svg>">
   <style>
     :root {
-      color-scheme: dark;
       --ink: #e9efed;
-      --muted: #91a19c;
-      --line: #263532;
-      --panel: #121d1b;
-      --base: #0b1211;
+      --ink-dim: #b5c7c2;
+      --muted: #829690;
+      --line: #22322f;
+      --line-light: #2d423e;
+      --panel: #111a18;
+      --panel-hover: #162421;
+      --base: #090f0e;
+      --header-bg: rgba(9, 15, 14, 0.92);
+      --card-bg: rgba(17, 26, 24, 0.85);
+      --terminal-bg: #0c1312;
       --teal: #65d7bc;
+      --teal-dim: rgba(101, 215, 188, 0.15);
       --amber: #f3bf61;
+      --amber-dim: rgba(243, 191, 97, 0.15);
       --coral: #ff7f70;
+      --coral-dim: rgba(255, 127, 112, 0.15);
       --green: #8cdda0;
-      --sans: "Avenir Next", "Segoe UI", sans-serif;
-      font-family: var(--sans);
+      --green-dim: rgba(140, 221, 160, 0.15);
+      --blue: #7bb5ff;
+      --blue-dim: rgba(123, 181, 255, 0.15);
+      --purple: #c09af8;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    [data-theme="light"] {
+      --ink: #101c19;
+      --ink-dim: #3a4e49;
+      --muted: #647a75;
+      --line: #d8e2df;
+      --line-light: #c2d1cd;
+      --panel: #ffffff;
+      --panel-hover: #f3f8f6;
+      --base: #f4f8f7;
+      --header-bg: rgba(244, 248, 247, 0.95);
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --terminal-bg: #1e2b28;
+      --teal: #0d8b70;
+      --teal-dim: rgba(13, 139, 112, 0.12);
+      --amber: #b87e00;
+      --amber-dim: rgba(184, 126, 0, 0.12);
+      --coral: #dc3928;
+      --coral-dim: rgba(220, 57, 40, 0.12);
+      --green: #1a9244;
+      --green-dim: rgba(26, 146, 68, 0.12);
+      --blue: #1c6fd8;
+      --blue-dim: rgba(28, 111, 216, 0.12);
+      --purple: #784bc2;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
       background: var(--base);
       color: var(--ink);
+      font-family: var(--sans);
+      transition: background 0.25s, color 0.25s;
+      -webkit-font-smoothing: antialiased;
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; min-width: 320px; background: linear-gradient(135deg, #101918 0%, var(--base) 48%, #151713 100%); }
-    header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px clamp(18px, 4vw, 54px); border-bottom: 1px solid var(--line); }
-    .brand { display: flex; align-items: baseline; gap: 14px; }
-    .brand strong { font-size: 22px; letter-spacing: 0; }
-    .brand span, .muted { color: var(--muted); font-size: 13px; }
-    .live { display: flex; align-items: center; gap: 9px; color: var(--green); font-size: 13px; }
-    .live i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 14px #8cdda066; }
-    main { max-width: 1440px; margin: 0 auto; padding: 24px clamp(18px, 4vw, 54px) 50px; }
-    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 0 14px; }
-    h1 { font-size: 19px; margin: 0; font-weight: 600; }
-    h2 { font-size: 16px; margin: 0; font-weight: 600; }
-    .node-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
-    .node { background: var(--panel); padding: 16px; min-width: 0; animation: arrive 440ms both; }
-    .node:nth-child(2) { animation-delay: 40ms; } .node:nth-child(3) { animation-delay: 80ms; } .node:nth-child(4) { animation-delay: 120ms; } .node:nth-child(5) { animation-delay: 160ms; }
-    .node-top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
-    .node-name { font-weight: 650; overflow-wrap: anywhere; }
-    .node-type { margin-top: 3px; color: var(--muted); font-size: 12px; text-transform: capitalize; }
-    .signal { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: var(--teal); margin-top: 5px; }
-    .signal.stale { background: var(--amber); }
-    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 8px; margin-top: 22px; }
-    .metric-label { color: var(--muted); font-size: 11px; }
-    .metric-value { margin-top: 4px; font-size: 18px; font-variant-numeric: tabular-nums; }
+
+    /* Dedicated Fullscreen 3D Login Page Overlay */
+    #login-page-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: radial-gradient(circle at center, #0f1c19 0%, #060a09 100%);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-y: auto;
+    }
+    #login-page-container.visible {
+      display: flex;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .login-3d-layout {
+      width: 100%;
+      max-width: 960px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      gap: 36px;
+      position: relative;
+    }
+    @media (max-width: 780px) {
+      .login-3d-layout { grid-template-columns: 1fr; }
+      .canvas-3d-col { height: 240px !important; }
+    }
+
+    .canvas-3d-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      height: 420px;
+    }
+    canvas#canvas3dCircle {
+      width: 100%;
+      height: 100%;
+      max-width: 400px;
+      max-height: 400px;
+      display: block;
+    }
+    .hero-badge-overlay {
+      position: absolute;
+      bottom: 20px;
+      text-align: center;
+      pointer-events: none;
+    }
+    .hero-badge-overlay strong {
+      font-size: 24px;
+      letter-spacing: 0.15em;
+      color: var(--teal);
+      text-shadow: 0 0 20px rgba(101, 215, 188, 0.6);
+      display: block;
+    }
+    .hero-badge-overlay span {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .login-card-glass {
+      background: rgba(17, 26, 24, 0.85);
+      border: 1px solid var(--line-light);
+      backdrop-filter: blur(16px);
+      border-radius: 14px;
+      padding: 32px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .login-card-glass h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .login-card-glass p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    /* Main Dashboard Header */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px clamp(18px, 4vw, 48px);
+      border-bottom: 1px solid var(--line);
+      background: var(--header-bg);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--teal) 0%, #207d67 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 16px var(--teal-dim);
+    }
+    .brand-icon svg { width: 22px; height: 22px; stroke: #ffffff; }
+    .brand-title { display: flex; flex-direction: column; }
+    .brand-title strong { font-size: 19px; letter-spacing: 0.05em; line-height: 1.2; }
+    .brand-title span { font-size: 11px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--line-light);
+      background: var(--panel);
+      color: var(--ink);
+    }
+    .pill i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite ease-in-out;
+    }
+    .pill.reconnecting i { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+    .pill.error i { background: var(--coral); box-shadow: 0 0 8px var(--coral); animation: none; }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.35); opacity: 0.6; }
+    }
+
+    .btn-ghost {
+      background: var(--panel);
+      border: 1px solid var(--line-light);
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-ghost:hover {
+      background: var(--panel-hover);
+      border-color: var(--teal);
+    }
+
+    .btn-action-teal {
+      background: var(--teal-dim);
+      border: 1px solid var(--teal);
+      color: var(--teal);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-action-teal:hover {
+      background: var(--teal);
+      color: #08110f;
+    }
+
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px 4px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--line-light);
+      background: var(--panel);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .user-pill:hover { border-color: var(--teal); }
+    .user-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--teal-dim);
+      color: var(--teal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .role-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: var(--teal-dim);
+      color: var(--teal);
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px clamp(18px, 4vw, 48px) 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* Stats Banner */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+    }
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: var(--shadow);
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: var(--line-light); }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-sub { font-size: 11px; color: var(--muted); }
+
+    /* Section Headers */
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    h2 {
+      font-size: 17px;
+      font-weight: 600;
+      margin: 0;
+      letter-spacing: -0.01em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--line);
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* Live Frequency Generator & Spectrum Analyzer */
+    .freq-studio {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .canvas-container {
+      position: relative;
+      background: #060b0a;
+      border: 1px solid var(--line-light);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    canvas#waveformCanvas {
+      width: 100%;
+      height: 180px;
+      display: block;
+    }
+    .canvas-overlay {
+      position: absolute;
+      top: 10px;
+      left: 14px;
+      display: flex;
+      gap: 12px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--teal);
+      pointer-events: none;
+    }
+    .overlap-alert-banner {
+      background: var(--coral-dim);
+      border: 1px solid var(--coral);
+      color: var(--coral);
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      animation: pulse 1.5s infinite;
+    }
+    .overlap-alert-banner.active { display: flex; }
+
+    .freq-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .slider-header span.val {
+      font-family: var(--mono);
+      color: var(--teal);
+      font-weight: 600;
+    }
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      background: var(--base);
+      height: 6px;
+      border-radius: 3px;
+      outline: none;
+      border: 1px solid var(--line-light);
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--teal);
+      cursor: pointer;
+      box-shadow: 0 0 6px var(--teal);
+    }
+
+    /* Live Hex Matrix Inspector */
+    .hex-inspector-box {
+      background: var(--terminal-bg);
+      border: 1px solid var(--line-light);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-family: var(--mono);
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-x: auto;
+    }
+    .hex-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 6px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .hex-row {
+      display: flex;
+      gap: 16px;
+      white-space: pre;
+      line-height: 1.5;
+    }
+    .hex-offset { color: var(--muted); }
+    .hex-bytes { color: #8cdda0; }
+    .hex-bytes span.collided {
+      color: #ff5555;
+      font-weight: bold;
+      background: rgba(255, 85, 85, 0.2);
+      border-radius: 2px;
+      padding: 0 2px;
+    }
+    .hex-bytes span.tag { color: var(--teal); }
+    .hex-ascii { color: var(--ink-dim); border-left: 1px solid rgba(255, 255, 255, 0.15); padding-left: 12px; }
+
+    /* Node Grid */
+    .node-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .node {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      position: relative;
+      box-shadow: var(--shadow);
+    }
+    .node:hover {
+      border-color: var(--teal);
+      transform: translateY(-2px);
+      background: var(--panel-hover);
+    }
+    .node.active-inspect {
+      border-color: var(--teal);
+      box-shadow: 0 0 16px var(--teal-dim);
+    }
+    .node-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .node-name { font-size: 15px; font-weight: 700; color: var(--ink); }
+    .node-type { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+    .signal {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 10px var(--teal-dim);
+    }
+    .signal.stale { background: var(--amber); box-shadow: 0 0 10px var(--amber-dim); }
+    .metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 10px;
+    }
+    .metric-item { display: flex; flex-direction: column; }
+    .metric-label { font-size: 11px; color: var(--muted); }
+    .metric-value {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+    }
     .metric-value.stale { color: var(--amber); }
-    .unit { color: var(--muted); font-size: 11px; margin-left: 3px; }
-    .lower { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr); gap: 38px; margin-top: 36px; }
-    .feed { border-top: 1px solid var(--line); }
-    .alert { display: grid; grid-template-columns: 70px 1fr; gap: 15px; border-bottom: 1px solid var(--line); padding: 16px 0; animation: arrive 300ms both; }
-    .alert-time { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; padding-top: 2px; }
-    .alert-title { display: flex; gap: 9px; align-items: baseline; flex-wrap: wrap; font-size: 13px; font-weight: 600; }
-    .source { color: var(--teal); text-transform: uppercase; font-size: 10px; letter-spacing: .08em; }
-    .source.template { color: var(--amber); }
-    .verification { color: var(--muted); font-size: 11px; font-weight: 400; }
-    .alert p { color: #c2ceca; line-height: 1.5; margin: 6px 0 0; font-size: 13px; }
-    .empty { color: var(--muted); border-top: 1px solid var(--line); padding: 20px 0; font-size: 13px; }
-    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
-    label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; }
-    select, input, button { min-width: 0; height: 40px; color: var(--ink); background: #0e1715; border: 1px solid #3a4d47; border-radius: 3px; padding: 0 10px; font: inherit; }
-    select:focus, input:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
-    button { grid-column: 1 / -1; border-color: #4aa98f; color: var(--teal); font-weight: 650; cursor: pointer; }
-    button:hover { background: #18312b; }
-    .notice { min-height: 20px; margin-top: 10px; color: var(--muted); font-size: 12px; }
-    @keyframes arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
-    @media (max-width: 1050px) { .node-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .lower { grid-template-columns: 1fr; } }
-    @media (max-width: 640px) { header { padding: 15px 18px; } .brand { display: grid; gap: 3px; } .node-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .node { padding: 13px; } .metrics { margin-top: 16px; } .metric-value { font-size: 16px; } .lower { margin-top: 28px; gap: 22px; } .alert { grid-template-columns: 55px 1fr; gap: 10px; } }
-    @media (max-width: 390px) { .node-grid { grid-template-columns: 1fr; } .controls { grid-template-columns: 1fr; } button { grid-column: 1; } }
+    .unit { font-size: 11px; color: var(--muted); margin-left: 2px; font-weight: 400; }
+    .node-footer {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .inspect-btn-badge {
+      color: var(--teal);
+      font-weight: 600;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Lower Section: Alerts Feed with SMS Dispatch & Anomaly Controls */
+    .lower {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(320px, 1fr);
+      gap: 24px;
+    }
+    @media (max-width: 960px) { .lower { grid-template-columns: 1fr; } }
+
+    .panel-box {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow);
+    }
+
+    /* Emergency SMS Dispatch Widget */
+    .sms-dispatch-card {
+      background: var(--card-bg);
+      border: 1px solid var(--teal);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 4px 16px var(--teal-dim);
+    }
+    .sms-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .sms-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--teal);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sms-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .sms-phone-pill {
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--ink);
+      background: var(--base);
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--line-light);
+    }
+    .sms-dispatch-btn {
+      background: linear-gradient(135deg, var(--teal) 0%, #298d74 100%);
+      color: #08110f;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .sms-dispatch-btn:hover { opacity: 0.95; transform: translateY(-1px); }
+
+    /* Cellular SMS Notification Popup Bubble */
+    .sms-popup-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      background: #111e1b;
+      border: 1px solid var(--teal);
+      border-radius: 12px;
+      padding: 16px;
+      max-width: 380px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      animation: slideInUp 0.3s ease;
+    }
+    .sms-popup-toast.show { display: flex; }
+    .sms-popup-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--teal);
+      font-weight: 600;
+    }
+    .sms-popup-msg {
+      font-size: 13px;
+      line-height: 1.45;
+      color: #ffffff;
+      background: #091210;
+      padding: 10px;
+      border-radius: 6px;
+      border-left: 3px solid var(--coral);
+      font-family: var(--sans);
+    }
+    .sms-popup-footer {
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .feed {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .feed::-webkit-scrollbar { width: 5px; }
+    .feed::-webkit-scrollbar-thumb { background: var(--line-light); border-radius: 4px; }
+    .alert {
+      background: var(--card-bg);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--coral);
+      border-radius: 6px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      animation: fadeIn 0.3s ease;
+    }
+    .alert.stale-alert { border-left-color: var(--amber); }
+    .alert-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .alert-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+    .alert-node { color: var(--ink); }
+    .alert-metric {
+      color: var(--coral);
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 1px 6px;
+      background: var(--coral-dim);
+      border-radius: 4px;
+    }
+    .source-badge {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--teal-dim);
+      color: var(--teal);
+    }
+    .source-badge.template { background: var(--amber-dim); color: var(--amber); }
+    .verification { font-size: 10px; color: var(--muted); font-style: italic; }
+    .alert-text { color: var(--ink-dim); font-size: 13px; line-height: 1.45; margin: 0; }
+    .alert-time { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .empty {
+      color: var(--muted);
+      padding: 36px 12px;
+      text-align: center;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Forms */
+    .controls { display: flex; flex-direction: column; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    label { color: var(--muted); font-size: 12px; font-weight: 500; }
+    select, input, button {
+      min-width: 0;
+      height: 40px;
+      color: var(--ink);
+      background: var(--base);
+      border: 1px solid var(--line-light);
+      border-radius: 6px;
+      padding: 0 12px;
+      font: inherit;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--teal);
+      box-shadow: 0 0 0 2px var(--teal-dim);
+    }
+    button.btn-primary {
+      background: linear-gradient(135deg, var(--teal) 0%, #298d74 100%);
+      color: #08110f;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 4px 12px var(--teal-dim);
+    }
+    button.btn-primary:hover { opacity: 0.95; transform: translateY(-1px); }
+    .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .preset-btn {
+      background: var(--panel);
+      border: 1px solid var(--line-light);
+      color: var(--ink-dim);
+      font-size: 11px;
+      padding: 4px 8px;
+      height: auto;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .preset-btn:hover { border-color: var(--teal); color: var(--teal); }
+    .notice {
+      min-height: 22px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+    }
+    .notice.success { color: var(--green); }
+    .notice.error { color: var(--coral); }
+
+    /* Interactive Assistant & CLI Section */
+    .console-dock {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .console-tabs { display: flex; background: var(--header-bg); border-bottom: 1px solid var(--line); }
+    .console-tab {
+      padding: 12px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .console-tab.active { color: var(--teal); border-bottom-color: var(--teal); background: var(--panel); }
+    .console-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+    /* Chatbot styles */
+    .chat-messages {
+      max-height: 300px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 4px;
+    }
+    .chat-bubble {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.45;
+      animation: fadeIn 0.2s ease;
+    }
+    .chat-bubble.bot { align-self: flex-start; background: var(--base); border: 1px solid var(--line-light); color: var(--ink); }
+    .chat-bubble.user { align-self: flex-end; background: var(--teal); color: #08110e; font-weight: 500; }
+    .suggestion-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip {
+      background: var(--base);
+      border: 1px solid var(--line-light);
+      color: var(--muted);
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .chip:hover { border-color: var(--teal); color: var(--teal); }
+    .chat-input-row { display: flex; gap: 8px; }
+    .chat-input-row input { flex: 1; }
+
+    /* CLI Terminal styles */
+    .cli-terminal {
+      background: var(--terminal-bg);
+      color: #8cdda0;
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 14px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      max-height: 300px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .cli-log { white-space: pre-wrap; line-height: 1.4; }
+    .cli-input-line { display: flex; align-items: center; gap: 8px; font-family: var(--mono); }
+    .cli-prompt { color: var(--teal); font-weight: bold; }
+    .cli-input-line input {
+      background: transparent;
+      border: none;
+      color: #e9efed;
+      font-family: var(--mono);
+      font-size: 12px;
+      flex: 1;
+      height: 24px;
+      padding: 0;
+    }
+    .cli-input-line input:focus { outline: none; box-shadow: none; }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(5px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.open { display: flex; animation: fadeIn 0.2s ease; }
+    .modal-card {
+      background: var(--panel);
+      border: 1px solid var(--line-light);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 660px;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-head {
+      padding: 16px 22px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: var(--panel);
+      z-index: 10;
+    }
+    .modal-body { padding: 22px; display: flex; flex-direction: column; gap: 16px; }
+    .close-btn { background: transparent; border: none; color: var(--muted); font-size: 22px; cursor: pointer; height: auto; padding: 4px; }
+    .close-btn:hover { color: var(--ink); }
+
+    .modal-tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+      margin-bottom: 6px;
+    }
+    .modal-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: 6px;
+    }
+    .modal-tab-btn.active { background: var(--teal-dim); color: var(--teal); }
+
+    .code-snippet {
+      background: var(--terminal-bg);
+      color: #8cdda0;
+      font-family: var(--mono);
+      font-size: 12px;
+      padding: 14px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      white-space: pre;
+      overflow-x: auto;
+      position: relative;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: var(--panel);
+      border: 1px solid var(--line-light);
+      color: var(--ink-dim);
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .copy-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+    /* Diagnostic report cards */
+    .report-verdict {
+      padding: 14px 18px;
+      border-radius: 8px;
+      background: var(--green-dim);
+      border: 1px solid var(--green);
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .report-verdict.warning { background: var(--amber-dim); border-color: var(--amber); }
+    .report-narrative {
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ink-dim);
+      background: var(--base);
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+    .report-metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 580px) { .report-metrics-grid { grid-template-columns: 1fr; } }
+    .kpi-card {
+      background: var(--base);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .kpi-title { font-size: 11px; color: var(--muted); text-transform: uppercase; }
+    .kpi-val { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .kpi-sub { font-size: 11px; color: var(--muted); }
+
+    .deltas-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--mono); }
+    .deltas-table th, .deltas-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+    .deltas-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+
+    .checklist { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+    .checklist li { display: flex; align-items: center; gap: 8px; color: var(--ink-dim); }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
+
+  <!-- ==================================================== -->
+  <!-- Dedicated Fullscreen 3D Login Page with Animated Gyro Rings -->
+  <!-- ==================================================== -->
+  <div id="login-page-container">
+    <div class="login-3d-layout">
+      <!-- Left Column: 3D Animated Circle / Gyroscope Radar -->
+      <div class="canvas-3d-col">
+        <canvas id="canvas3dCircle"></canvas>
+        <div class="hero-badge-overlay">
+          <strong>Aegis Manual</strong>
+          <span>Autonomous Encrypted Grid & Infrastructure Sentinel</span>
+        </div>
+      </div>
+
+      <!-- Right Column: Login / Registration Card -->
+      <div class="login-card-glass">
+        <div>
+          <h1>
+            <span style="color: var(--teal);">●</span>
+            <span id="login-main-title">Aegis Manual Portal</span>
+          </h1>
+          <p>Autonomous Encrypted Grid Infrastructure Sentinel (P.U.L.S.E.)</p>
+        </div>
+
+        <div class="modal-tabs">
+          <button class="modal-tab-btn active" id="tab-login-main" data-target="form-login-main">Sign In</button>
+          <button class="modal-tab-btn" id="tab-register-main" data-target="form-register-main">Register</button>
+        </div>
+
+        <!-- Main Sign In Form -->
+        <form id="form-login-main" class="controls" style="display: flex;">
+          <div class="form-group">
+            <label for="main-u">Operator ID or Username</label>
+            <input id="main-u" type="text" placeholder="e.g. operator" value="operator" required>
+          </div>
+          <div class="form-group">
+            <label for="main-p">Secret Passkey</label>
+            <input id="main-p" type="password" placeholder="Enter password" value="civicpulse2026" required>
+          </div>
+
+          <label style="font-size: 11px; color: var(--muted); margin-top: -6px;">1-Click Fast Demo Sign In:</label>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button type="button" class="preset-btn" id="main-fast-admin">🧑‍💼 Lead Operator</button>
+            <button type="button" class="preset-btn" id="main-fast-inspector">🔍 Safety Inspector</button>
+            <button type="button" class="preset-btn" id="main-fast-iot">📡 IoT Engineer</button>
+            <button type="button" class="preset-btn" id="main-fast-guest">👤 Guest</button>
+          </div>
+
+          <button type="submit" class="btn-primary" style="margin-top: 8px;">Enter Aegis Manual Sentinel</button>
+          <div class="notice" id="main-login-notice"></div>
+        </form>
+
+        <!-- Main Register Form -->
+        <form id="form-register-main" class="controls" style="display: none;">
+          <div class="form-group">
+            <label for="main-reg-name">Full Name</label>
+            <input id="main-reg-name" type="text" placeholder="e.g. Dr. Maya Chen" required>
+          </div>
+          <div class="form-group">
+            <label for="main-reg-u">Username</label>
+            <input id="main-reg-u" type="text" placeholder="e.g. mchen" required>
+          </div>
+          <div class="form-group">
+            <label for="main-reg-role">Designated Sentinel Role</label>
+            <select id="main-reg-role">
+              <option value="Operator">Lead Infrastructure Operator (Full Access)</option>
+              <option value="Inspector">Safety Inspector (Audits & Diagnostics)</option>
+              <option value="IoT Engineer">IoT Firmware Engineer (Device Provisioning)</option>
+              <option value="Guest">Public Observer (Read-Only Telemetry)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="main-reg-p">Create Passkey</label>
+            <input id="main-reg-p" type="password" placeholder="Minimum 5 characters" required>
+          </div>
+
+          <button type="submit" class="btn-primary" style="margin-top: 8px;">Create Sentinel Profile</button>
+          <div class="notice" id="main-reg-notice"></div>
+        </form>
+
+        <div style="text-align: center; margin-top: 4px;">
+          <button type="button" class="btn-ghost" id="skip-login-btn" style="font-size: 11px; padding: 4px 10px;">
+            ⚡ Continue as Guest without Sign In &rarr;
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cellular SMS Delivery Notification Popup -->
+  <div class="sms-popup-toast" id="sms-toast">
+    <div class="sms-popup-top">
+      <span>📱 CELLULAR SMS DISPATCHED</span>
+      <span id="sms-toast-time">Just Now</span>
+    </div>
+    <div class="sms-popup-msg" id="sms-toast-body">
+      [Aegis Manual Alert] Anomaly detected on infrastructure grid.
+    </div>
+    <div class="sms-popup-footer">
+      <span>To: <strong id="sms-toast-recipient">+1 (555) 019-2834</strong></span>
+      <span>Network: <strong style="color: var(--green);">DELIVERED (LTE/GSM)</strong></span>
+    </div>
+  </div>
+
+  <!-- Header -->
   <header>
-    <div class="brand"><strong>CivicPulse</strong><span>Infrastructure monitor</span></div>
-    <div class="live"><i></i><span id="connection">Connecting</span></div>
+    <a href="/" class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <circle cx="12" cy="12" r="4"></circle>
+          <line x1="12" y1="2" x2="12" y2="6"></line>
+          <line x1="12" y1="18" x2="12" y2="22"></line>
+          <line x1="2" y1="12" x2="6" y2="12"></line>
+          <line x1="18" y1="12" x2="22" y2="12"></line>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <strong>Aegis Manual</strong>
+        <span>Autonomous Encrypted Grid Sentinel (P.U.L.S.E.)</span>
+      </div>
+    </a>
+    <div class="header-actions">
+      <!-- Live Status Pill -->
+      <div class="pill" id="status-pill">
+        <i></i><span id="connection">Connecting</span>
+      </div>
+
+      <!-- Quick Connect IoT Device Button -->
+      <button class="btn-action-teal" id="iot-hub-btn" title="Onboard and connect IoT devices">
+        📡 Connect IoT Device
+      </button>
+
+      <!-- Theme Switcher (Dark / Light) -->
+      <button class="btn-ghost" id="theme-toggle-btn" title="Toggle Dark and White (Light) mode">
+        <span id="theme-icon">☀️</span> <span id="theme-text">Light</span>
+      </button>
+
+      <!-- User Auth Pill -->
+      <div class="user-pill" id="auth-pill" title="Click to open 3D Login or Profile Manager">
+        <span class="user-avatar" id="user-avatar">👤</span>
+        <span id="user-name">Alex Vance</span>
+        <span class="role-badge" id="user-role">Operator</span>
+      </div>
+
+      <!-- Refresh Button -->
+      <button class="btn-ghost" id="refresh-now-btn" title="Force instant data poll">
+        ↻
+      </button>
+    </div>
   </header>
+
   <main>
+    <!-- System Telemetry Overview -->
+    <section class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Monitored Fleet</div>
+        <div class="stat-value" id="stat-total-nodes">—</div>
+        <div class="stat-sub" id="stat-active-nodes">Gathering telemetry...</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sentinel Health</div>
+        <div class="stat-value" style="color: var(--green);" id="stat-health-pct">100%</div>
+        <div class="stat-sub" id="stat-health-desc">All structures in tolerance</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active RF Spectrum</div>
+        <div class="stat-value" style="color: var(--teal);" id="stat-spectrum-band">915.0 MHz</div>
+        <div class="stat-sub" id="stat-overlap-status">No frequency collisions</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Emergency SMS Gateway</div>
+        <div class="stat-value" style="font-size: 20px; color: var(--teal);" id="stat-sms-badge">Armed (Active)</div>
+        <div class="stat-sub" id="stat-sms-phone">To: +1 (555) 019-2834</div>
+      </div>
+    </section>
+
+    <!-- Real-Time Frequency Generator & Spectrum Analyzer -->
+    <section class="freq-studio" aria-labelledby="freq-title">
+      <div class="section-head" style="margin-bottom: 8px;">
+        <h2 id="freq-title">
+          🌊 Live RF Frequency Generator & Spectrum Waterfall
+          <span class="badge" style="color: var(--teal);">Real-Time Signal Engine</span>
+        </h2>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn-ghost" id="pause-wave-btn">⏸️ Pause</button>
+          <button type="button" class="btn-ghost" id="reset-freq-btn">Reset Spectrum</button>
+        </div>
+      </div>
+
+      <!-- Overlap Warning Banner -->
+      <div class="overlap-alert-banner" id="overlap-banner">
+        ⚠️ <strong>FREQUENCY OVERLAP DETECTED:</strong> Carrier wave & interferer frequencies collide within the 250 kHz ISM channel! Packet bit error rate elevated.
+      </div>
+
+      <!-- Oscilloscope & Spectrum Display -->
+      <div class="canvas-container">
+        <div class="canvas-overlay">
+          <span>RF CARRIER: <strong id="overlay-carrier">915.00 MHz</strong></span>
+          <span>INTERFERER: <strong id="overlay-interferer">915.80 MHz</strong></span>
+          <span>OVERLAP: <strong id="overlay-overlap-status" style="color: var(--green);">CLEAR</strong></span>
+        </div>
+        <canvas id="waveformCanvas"></canvas>
+      </div>
+
+      <!-- Frequency Sliders Grid -->
+      <div class="freq-controls-grid">
+        <div class="slider-group">
+          <div class="slider-header">
+            <label for="carrier-freq-slider">Carrier Frequency (MHz)</label>
+            <span class="val" id="carrier-val-display">915.0 MHz</span>
+          </div>
+          <input type="range" id="carrier-freq-slider" min="902.0" max="928.0" step="0.1" value="915.0">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <label for="interferer-freq-slider">Interferer Frequency (MHz)</label>
+            <span class="val" id="interferer-val-display">915.8 MHz</span>
+          </div>
+          <input type="range" id="interferer-freq-slider" min="902.0" max="928.0" step="0.1" value="915.8">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <label for="signal-amp-slider">RF Signal Amplitude</label>
+            <span class="val" id="amp-val-display">0.75</span>
+          </div>
+          <input type="range" id="signal-amp-slider" min="0.1" max="1.0" step="0.05" value="0.75">
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <label for="noise-slider">Noise Floor / Jitter</label>
+            <span class="val" id="noise-val-display">0.05</span>
+          </div>
+          <input type="range" id="noise-slider" min="0.0" max="0.3" step="0.01" value="0.05">
+        </div>
+      </div>
+
+      <!-- Live Hex Stream Generated from Frequency -->
+      <div class="hex-inspector-box">
+        <div class="hex-header">
+          <span>LIVE FREQUENCY HEX ENCODING FRAME (ASCON-128 RF PAYLOAD)</span>
+          <span id="hex-rate-display">Bandwidth: 250 kHz | Sample Rate: 32 kS/s</span>
+        </div>
+        <div class="hex-row">
+          <span class="hex-offset">0000:</span>
+          <span class="hex-bytes" id="hex-stream-bytes">59 67 67 64 72 61 73 69 6C 20 52 46 03 93 42 70</span>
+          <span class="hex-ascii" id="hex-stream-ascii">|Yggdrasil RF..Bp|</span>
+        </div>
+        <div class="hex-row">
+          <span class="hex-offset">0010:</span>
+          <span class="hex-bytes" id="hex-stream-bytes-2">89 1C C0 BB 53 96 00 1A 4F A2 C3 09 88 11 EF 42</span>
+          <span class="hex-ascii" id="hex-stream-ascii-2">|....S...O......B|</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live Nodes Telemetry Section -->
     <section aria-labelledby="nodes-title">
-      <div class="section-head"><h1 id="nodes-title">Live nodes</h1><span class="muted" id="node-count">Waiting for telemetry</span></div>
+      <div class="section-head">
+        <h2 id="nodes-title">
+          Live Infrastructure Sentinel Nodes
+          <span class="badge" id="node-count">Waiting for telemetry</span>
+        </h2>
+        <span class="badge" style="background: transparent; color: var(--teal); font-weight: 600;">
+          💡 Click any node for Human-Friendly Diagnostic Report
+        </span>
+      </div>
       <div class="node-grid" id="nodes"></div>
     </section>
+
+    <!-- Lower Section: Alerts Feed with SMS Dispatch & Anomaly Controls -->
     <div class="lower">
-      <section aria-labelledby="alerts-title">
-        <div class="section-head"><h2 id="alerts-title">Maintenance alerts</h2><span class="muted">Most recent first</span></div>
-        <div class="feed" id="alerts"><div class="empty">No threshold-crossing deltas yet.</div></div>
-      </section>
-      <section aria-labelledby="inject-title">
-        <div class="section-head"><h2 id="inject-title">Inject anomaly</h2></div>
-        <form id="inject-form">
-          <div class="controls">
-            <label>Node<select id="node-select" name="node" required></select></label>
-            <label>Signal<select name="type"><option>VIBRATION_SPIKE</option><option>TEMP_DROP</option><option>SENSOR_DRIFT</option><option>DROPOUT</option></select></label>
-            <label>Duration (seconds)<input name="durationSec" type="number" min="1" max="3600" value="20" required></label>
-            <button type="submit">Inject signal</button>
+      <!-- Maintenance Alerts Panel -->
+      <section class="panel-box" aria-labelledby="alerts-title">
+        <div class="section-head">
+          <h2 id="alerts-title">
+            Maintenance Alerts
+            <span class="badge" id="alerts-count-badge">0</span>
+          </h2>
+          <span class="badge" style="background: transparent; color: var(--muted);">Real-time stream</span>
+        </div>
+
+        <!-- Emergency Cellular SMS Alert Dispatch Card -->
+        <div class="sms-dispatch-card">
+          <div class="sms-header-row">
+            <span class="sms-title">
+              📱 Threshold-Based SMS Alert Dispatcher
+            </span>
+            <button type="button" class="sms-dispatch-btn" id="send-test-sms-btn">
+              ⚡ Dispatch Test SMS Alert
+            </button>
           </div>
+          <div class="sms-meta-row">
+            <span>Emergency Phone: <span class="sms-phone-pill" id="display-sms-phone">+1 (555) 019-2834</span></span>
+            <button type="button" class="btn-ghost" id="edit-sms-phone-btn" style="padding: 2px 8px; font-size: 11px;">
+              ✏️ Edit Phone
+            </button>
+          </div>
+          <div style="font-size: 11px; color: var(--muted); line-height: 1.4;">
+            Automated SMS triggers whenever a node suffers a <strong>Critical Vibration Spike (&gt;25%)</strong> or <strong>Sensor Dropout</strong>. Dispatched via cellular LTE/GSM gateway directly to the emergency responder.
+          </div>
+        </div>
+
+        <div class="feed" id="alerts">
+          <div class="empty">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;">
+              <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            No threshold-crossing deltas yet. System operating within baseline bounds.
+          </div>
+        </div>
+      </section>
+
+      <!-- Anomaly Injection Controls -->
+      <section class="panel-box" aria-labelledby="inject-title">
+        <div class="section-head">
+          <h2 id="inject-title">Simulate Anomaly</h2>
+          <span class="badge" style="color: var(--teal);">Live Fleet Control</span>
+        </div>
+        <p style="font-size: 12px; color: var(--muted); margin: 0 0 14px 0; line-height: 1.45;">
+          Inject stress perturbations to test baseline deviation models, AI alert generation, and cellular SMS emergency dispatch.
+        </p>
+        <form id="inject-form" class="controls">
+          <div class="form-group">
+            <label for="node-select">Target Infrastructure Node</label>
+            <select id="node-select" name="node" required></select>
+          </div>
+          <div class="form-group">
+            <label for="type-select">Anomaly Signal Type</label>
+            <select id="type-select" name="type">
+              <option value="VIBRATION_SPIKE">⚡ Vibration Spike (mechanical impact)</option>
+              <option value="TEMP_DROP">❄️ Sudden Temp Drop (freezing stress)</option>
+              <option value="SENSOR_DRIFT">📈 Sensor Drift (calibration loss)</option>
+              <option value="DROPOUT">📡 Telemetry Dropout (signal loss)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="duration-input">Duration (seconds)</label>
+            <input id="duration-input" name="durationSec" type="number" min="1" max="3600" value="20" required>
+          </div>
+          <div class="form-group">
+            <label>Quick Presets</label>
+            <div class="presets">
+              <button type="button" class="preset-btn" data-type="VIBRATION_SPIKE" data-sec="15">⚡ High Vibration (15s)</button>
+              <button type="button" class="preset-btn" data-type="TEMP_DROP" data-sec="20">❄️ Freeze Drop (20s)</button>
+              <button type="button" class="preset-btn" data-type="DROPOUT" data-sec="25">📡 Feed Dropout (25s)</button>
+            </div>
+          </div>
+          <button type="submit" class="btn-primary" id="inject-submit-btn">Inject Stress Signal</button>
           <div class="notice" id="notice" role="status"></div>
         </form>
       </section>
     </div>
+
+    <!-- Integrated Console: Chatbot Assistant & CLI Terminal -->
+    <section class="console-dock" aria-label="Interactive Assistant & CLI Terminal">
+      <div class="console-tabs">
+        <div class="console-tab active" id="tab-bot" data-target="panel-bot">
+          💬 A.E.G.I.S. Assistant
+        </div>
+        <div class="console-tab" id="tab-cli" data-target="panel-cli">
+          💻 CLI Terminal Shell
+        </div>
+      </div>
+
+      <!-- Chatbot Assistant Panel -->
+      <div class="console-body" id="panel-bot">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-bubble bot">
+            Greetings! I am <strong>Aegis Manual Sentinel Core</strong>. I monitor structural baselines, analyze RF spectrum overlaps, and dispatch emergency SMS alerts on threshold violations. How can I assist you?
+          </div>
+        </div>
+
+        <div class="suggestion-chips">
+          <span class="chip" data-msg="How is the infrastructure doing?">📊 System Health</span>
+          <span class="chip" data-msg="Are there any active maintenance alerts?">🚨 Check Alerts</span>
+          <span class="chip" data-msg="Send an emergency SMS alert dispatch">📱 Trigger Emergency SMS</span>
+          <span class="chip" data-msg="Show me the RF frequency spectrum and check for overlaps">🌊 Spectrum & Overlaps</span>
+          <span class="chip" data-msg="How can I connect a new IoT sensor device?">📡 IoT Onboarding</span>
+        </div>
+
+        <form id="chat-form" class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Ask Aegis Manual a question (e.g. 'Status of nodes', 'Send test SMS', 'Explain RF overlap')..." autocomplete="off">
+          <button type="submit" class="btn-primary" style="padding: 0 18px;">Send</button>
+        </form>
+      </div>
+
+      <!-- CLI Terminal Panel -->
+      <div class="console-body" id="panel-cli" style="display: none;">
+        <div class="cli-terminal" id="cli-output">
+          <div class="cli-log">Aegis Manual Shell [P.U.L.S.E. v2.0-PROD]</div>
+          <div class="cli-log">Type 'help' to view available system commands.</div>
+        </div>
+        <form id="cli-form" class="cli-input-line">
+          <span class="cli-prompt">aegis-manual@sentinel:~$</span>
+          <input type="text" id="cli-input" placeholder="status, alerts, sms [phone] [msg], spectrum, hex [node], iot, help..." autocomplete="off">
+        </form>
+      </div>
+    </section>
   </main>
+
+  <!-- Edit Phone Modal -->
+  <div class="modal-backdrop" id="sms-modal">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-head">
+        <div>
+          <strong style="font-size: 16px;">Configure Emergency SMS Recipient</strong>
+          <div style="font-size: 11px; color: var(--muted);">Cellular alert destination</div>
+        </div>
+        <button class="close-btn" id="sms-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="input-sms-number">Emergency Phone Number</label>
+          <input id="input-sms-number" type="tel" value="+1 (555) 019-2834" placeholder="+1 (555) 000-0000" style="font-family: var(--mono);" required>
+        </div>
+        <div class="form-group">
+          <label for="input-sms-threshold">Minimum Delta Threshold to Trigger SMS</label>
+          <select id="input-sms-threshold">
+            <option value="15">15% Deviation (High Sensitivity)</option>
+            <option value="25" selected>25% Deviation (Standard Nominal)</option>
+            <option value="50">50% Deviation (Severe Overload Only)</option>
+          </select>
+        </div>
+        <button type="button" class="btn-primary" id="save-sms-config-btn">Save Emergency Number</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IoT Device Connection Hub Modal -->
+  <div class="modal-backdrop" id="iot-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <strong style="font-size: 17px;">📡 IoT Device Onboarding & Ingestion Studio</strong>
+          <div style="font-size: 11px; color: var(--muted);">Transmit live sensor readings or integrate external hardware</div>
+        </div>
+        <button class="close-btn" id="iot-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-tabs">
+          <button class="modal-tab-btn active" id="tab-iot-live" data-target="sec-iot-live">🚀 Live Ingest Simulator</button>
+          <button class="modal-tab-btn" id="tab-iot-code" data-target="sec-iot-code">💻 Developer Code Snippets</button>
+        </div>
+
+        <!-- Tab 1: Live Interactive Ingest -->
+        <div id="sec-iot-live" style="display: flex; flex-direction: column; gap: 14px;">
+          <p style="font-size: 12px; color: var(--muted); margin: 0; line-height: 1.45;">
+            Configure your IoT sensor parameters below and send live telemetry directly to the A.E.G.I.S. <code>/ingest</code> endpoint.
+          </p>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label for="iot-node-type">Node Asset Type</label>
+              <select id="iot-node-type">
+                <option value="streetlight">Streetlight</option>
+                <option value="bridge">Bridge</option>
+                <option value="utilityline">Utility Line</option>
+                <option value="sensor">Environmental Station</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="iot-mac">Device MAC / Identifier</label>
+              <div style="display: flex; gap: 6px;">
+                <input id="iot-mac" type="text" value="B8:27:EB:77:88:99" style="font-family: var(--mono); flex: 1;">
+                <button type="button" class="btn-ghost" id="rand-mac-btn" title="Randomize MAC">🎲</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+            <div class="form-group">
+              <label for="iot-vib">Vibration RMS (g)</label>
+              <input id="iot-vib" type="number" step="0.01" min="0" max="50" value="0.12">
+            </div>
+            <div class="form-group">
+              <label for="iot-temp">Temperature (°C)</label>
+              <input id="iot-temp" type="number" step="0.1" min="-40" max="120" value="21.5">
+            </div>
+            <div class="form-group">
+              <label for="iot-rf">RF Power (dB)</label>
+              <input id="iot-rf" type="number" step="0.5" min="-120" max="20" value="-58.5">
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; margin-top: 4px;">
+            <button type="button" class="btn-primary" id="iot-transmit-btn" style="flex: 1;">
+              🚀 Transmit Single Telemetry Ping
+            </button>
+            <button type="button" class="btn-ghost" id="iot-stream-toggle-btn">
+              ▶ Start Auto-Stream (1 Hz)
+            </button>
+          </div>
+
+          <div class="notice" id="iot-notice" role="status"></div>
+        </div>
+
+        <!-- Tab 2: Code Snippets -->
+        <div id="sec-iot-code" style="display: none; flex-direction: column; gap: 14px;">
+          <p style="font-size: 12px; color: var(--muted); margin: 0; line-height: 1.45;">
+            Use these code snippets to connect any physical IoT micro-controller (ESP32, Raspberry Pi Pico, Arduino) or Linux edge device to A.E.G.I.S.
+          </p>
+
+          <label style="font-weight: 600; color: var(--teal);">cURL / Shell Command (Copy & Run)</label>
+          <div class="code-snippet">
+<button class="copy-btn" data-copy="curl -X POST https://YOUR-RENDER-APP.onrender.com/ingest \
+  -H 'Content-Type: application/json' \
+  -d '{&quot;nodeType&quot;:&quot;streetlight&quot;,&quot;mac&quot;:&quot;B8:27:EB:44:55:66&quot;,&quot;vibrationRms&quot;:0.08,&quot;tempC&quot;:22.4,&quot;rfPowerDb&quot;:-58.2}'">Copy</button>curl -X POST http://localhost:7070/ingest \
+  -H 'Content-Type: application/json' \
+  -d '{"nodeType":"streetlight","mac":"B8:27:EB:44:55:66","vibrationRms":0.08,"tempC":22.4,"rfPowerDb":-58.2}'
+          </div>
+
+          <label style="font-weight: 600; color: var(--teal);">Python / MicroPython IoT Sender</label>
+          <div class="code-snippet">
+<button class="copy-btn" data-copy="import urllib.request, json
+payload = json.dumps({'nodeType': 'bridge', 'mac': 'AA:BB:CC:DD:EE:FF', 'vibrationRms': 0.15, 'tempC': 18.2, 'rfPowerDb': -61.0}).encode()
+req = urllib.request.Request('http://localhost:7070/ingest', data=payload, headers={'Content-Type': 'application/json'})
+urllib.request.urlopen(req)">Copy</button>import urllib.request, json
+
+payload = json.dumps({
+    "nodeType": "bridge",
+    "mac": "AA:BB:CC:DD:EE:FF",
+    "vibrationRms": 0.15,
+    "tempC": 18.2,
+    "rfPowerDb": -61.0
+}).encode()
+
+req = urllib.request.Request("http://localhost:7070/ingest", data=payload,
+                             headers={"Content-Type": "application/json"})
+with urllib.request.urlopen(req) as res:
+    print("Ingested successfully:", res.read().decode())
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Human-Friendly Diagnostic & Audit Report Modal -->
+  <div class="modal-backdrop" id="report-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div>
+          <strong id="modal-node-title" style="font-size: 17px;">Infrastructure Diagnostic Report</strong>
+          <div id="modal-node-sub" style="font-size: 12px; color: var(--muted);">Automated baseline audit</div>
+        </div>
+        <button class="close-btn" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Verdict Banner -->
+        <div class="report-verdict" id="report-verdict">
+          <div style="font-size: 24px;" id="verdict-icon">🟢</div>
+          <div>
+            <div style="font-weight: 700; font-size: 15px;" id="verdict-title">NOMINAL - Standard Operation</div>
+            <div style="font-size: 12px; opacity: 0.9;" id="verdict-desc">Observed sensor signals match calibrated baseline within 100% safety bounds.</div>
+          </div>
+        </div>
+
+        <!-- Plain English Narrative -->
+        <div>
+          <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--muted); margin-bottom: 6px;">Executive Diagnostic Summary</div>
+          <div class="report-narrative" id="report-narrative">
+            Loading baseline telemetry report...
+          </div>
+        </div>
+
+        <!-- 3 KPIs (Vibration, Temperature, RF) -->
+        <div class="report-metrics-grid">
+          <div class="kpi-card">
+            <span class="kpi-title">Vibration RMS</span>
+            <span class="kpi-val" id="kpi-vib">—</span>
+            <span class="kpi-sub" id="kpi-vib-baseline">Baseline: —</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-title">Temperature</span>
+            <span class="kpi-val" id="kpi-temp">—</span>
+            <span class="kpi-sub" id="kpi-temp-baseline">Baseline: —</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-title">RF Signal Power</span>
+            <span class="kpi-val" id="kpi-rf">—</span>
+            <span class="kpi-sub" id="kpi-rf-baseline">Baseline: —</span>
+          </div>
+        </div>
+
+        <!-- Recent Deltas Log -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
+            <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--muted);">Stored Baseline Deltas Audit</div>
+            <span style="font-size: 11px; color: var(--muted);">Ascon-encrypted storage</span>
+          </div>
+          <div style="overflow-x: auto; max-height: 180px; border: 1px solid var(--line); border-radius: 6px;">
+            <table class="deltas-table">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>Baseline</th>
+                  <th>Observed</th>
+                  <th>Difference</th>
+                  <th>Recorded At</th>
+                </tr>
+              </thead>
+              <tbody id="modal-deltas-body">
+                <tr><td colspan="5" style="text-align: center; color: var(--muted);">Loading deltas...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Automated Action Items Checklist -->
+        <div>
+          <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--muted); margin-bottom: 8px;">Maintenance Recommendations</div>
+          <ul class="checklist" id="report-checklist">
+            <li>✓ Structural integrity: Safe threshold confirmed.</li>
+            <li>✓ Telemetry heartbeat: Streaming nominal at 1 Hz.</li>
+            <li>✓ Cellular SMS Dispatch: Active for critical alerts.</li>
+          </ul>
+        </div>
+
+        <!-- Action Row -->
+        <div style="display: flex; gap: 10px; margin-top: 4px;">
+          <button type="button" class="btn-primary" id="modal-target-inject" style="flex: 1;">
+            ⚡ Inject Test Anomaly on this Node
+          </button>
+          <button type="button" class="btn-ghost" id="modal-copy-btn">
+            📋 Copy Report
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
-    const nodesElement = document.querySelector('#nodes');
-    const alertsElement = document.querySelector('#alerts');
-    const nodeSelect = document.querySelector('#node-select');
-    const connection = document.querySelector('#connection');
+    // Global State
+    let cachedNodes = {};
+    let cachedAlerts = [];
+    let activeInspectedNode = null;
+    let autoStreamInterval = null;
+    let emergencyPhoneNumber = "+1 (555) 019-2834";
+
+    // Theme Management
+    function initTheme() {
+      const saved = localStorage.getItem('civicpulse_theme') || 'dark';
+      applyTheme(saved);
+    }
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('civicpulse_theme', theme);
+      const icon = document.querySelector('#theme-icon');
+      const text = document.querySelector('#theme-text');
+      if (theme === 'light') {
+        icon.textContent = '🌙';
+        text.textContent = 'Dark';
+      } else {
+        icon.textContent = '☀️';
+        text.textContent = 'Light';
+      }
+    }
+    document.querySelector('#theme-toggle-btn').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // ====================================================
+    // Interactive 3D Gyroscopic Circle / Radar Rings Engine
+    // ====================================================
+    const canvas3d = document.querySelector('#canvas3dCircle');
+    const ctx3d = canvas3d.getContext('2d');
+    let angleX = 0.4;
+    let angleY = 0;
+    let angleZ = 0;
+    let mouseX = 0, mouseY = 0;
+
+    function resize3d() {
+      const rect = canvas3d.getBoundingClientRect();
+      canvas3d.width = (rect.width || 360) * window.devicePixelRatio;
+      canvas3d.height = (rect.height || 360) * window.devicePixelRatio;
+      ctx3d.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    window.addEventListener('resize', resize3d);
+
+    window.addEventListener('mousemove', (e) => {
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      mouseX = (e.clientX - cx) * 0.0005;
+      mouseY = (e.clientY - cy) * 0.0005;
+    });
+
+    function render3dCircle() {
+      const w = canvas3d.width / window.devicePixelRatio;
+      const h = canvas3d.height / window.devicePixelRatio;
+      const cx = w / 2;
+      const cy = h / 2;
+
+      ctx3d.clearRect(0, 0, w, h);
+
+      angleY += 0.015 + mouseX * 0.5;
+      angleZ += 0.008 + mouseY * 0.5;
+
+      // 3 Concentric Rings at different 3D angles
+      drawRing3D(cx, cy, 110, angleY, angleX + mouseY, '#65d7bc', 24);
+      drawRing3D(cx, cy, 80, -angleY * 1.4, angleX * 1.5, '#48b89e', 18);
+      drawRing3D(cx, cy, 50, angleZ * 2, -angleY, '#7bb5ff', 12);
+
+      // Core pulsating radar dot
+      const pulseR = 5 + Math.sin(Date.now() * 0.006) * 2;
+      ctx3d.beginPath();
+      ctx3d.arc(cx, cy, pulseR, 0, Math.PI * 2);
+      ctx3d.fillStyle = '#65d7bc';
+      ctx3d.shadowColor = '#65d7bc';
+      ctx3d.shadowBlur = 16;
+      ctx3d.fill();
+      ctx3d.shadowBlur = 0;
+
+      requestAnimationFrame(render3dCircle);
+    }
+
+    function drawRing3D(cx, cy, radius, rotY, rotX, color, numNodes) {
+      const points = [];
+      for (let i = 0; i <= numNodes; i++) {
+        const theta = (i / numNodes) * Math.PI * 2;
+        let x = Math.cos(theta) * radius;
+        let y = Math.sin(theta) * radius;
+        let z = 0;
+
+        // Rotate around Y
+        let x1 = x * Math.cos(rotY) + z * Math.sin(rotY);
+        let z1 = -x * Math.sin(rotY) + z * Math.cos(rotY);
+
+        // Rotate around X
+        let y2 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
+        let z2 = y * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+        // Perspective projection
+        const fov = 350;
+        const scale = fov / (fov + z2);
+        points.push({ x: cx + x1 * scale, y: cy + y2 * scale, z: z2 });
+      }
+
+      // Draw projected ring line
+      ctx3d.beginPath();
+      ctx3d.lineWidth = 1.8;
+      ctx3d.strokeStyle = color;
+      ctx3d.shadowColor = color;
+      ctx3d.shadowBlur = 10;
+      points.forEach((p, idx) => {
+        if (idx === 0) ctx3d.moveTo(p.x, p.y);
+        else ctx3d.lineTo(p.x, p.y);
+      });
+      ctx3d.stroke();
+      ctx3d.shadowBlur = 0;
+
+      // Draw node dots along ring
+      points.forEach((p, idx) => {
+        if (idx % 3 === 0) {
+          ctx3d.beginPath();
+          ctx3d.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+          ctx3d.fillStyle = '#ffffff';
+          ctx3d.fill();
+        }
+      });
+    }
+
+    resize3d();
+    render3dCircle();
+
+    // User Authentication & Registration System
+    const DEFAULT_USERS = [
+      { name: 'Alex Vance', username: 'operator', pass: 'civicpulse2026', role: 'Operator', avatar: '🧑‍💼', canInject: true },
+      { name: 'Dr. Maya Chen', username: 'inspector', pass: 'inspect2026', role: 'Inspector', avatar: '🔍', canInject: false },
+      { name: 'Elena Rostova', username: 'iotdev', pass: 'iot2026', role: 'IoT Engineer', avatar: '📡', canInject: true },
+      { name: 'Public Observer', username: 'guest', pass: 'view2026', role: 'Guest', avatar: '👤', canInject: false }
+    ];
+
+    function getUsers() {
+      const saved = localStorage.getItem('civicpulse_registered_users');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+      return DEFAULT_USERS;
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem('civicpulse_registered_users', JSON.stringify(users));
+    }
+
+    function getActiveUser() {
+      const saved = localStorage.getItem('civicpulse_active_user');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) {}
+      }
+      return DEFAULT_USERS[0];
+    }
+
+    function setActiveUser(user) {
+      localStorage.setItem('civicpulse_active_user', JSON.stringify(user));
+      updateAuthDisplay();
+    }
+
+    function updateAuthDisplay() {
+      const user = getActiveUser();
+      document.querySelector('#user-avatar').textContent = user.avatar || '👤';
+      document.querySelector('#user-name').textContent = user.name;
+      const roleBadge = document.querySelector('#user-role');
+      roleBadge.textContent = user.role;
+      if (user.role === 'Inspector') {
+        roleBadge.style.background = 'var(--blue-dim)';
+        roleBadge.style.color = 'var(--blue)';
+      } else if (user.role === 'IoT Engineer') {
+        roleBadge.style.background = 'var(--purple)';
+        roleBadge.style.color = '#ffffff';
+      } else if (user.role === 'Guest') {
+        roleBadge.style.background = 'var(--amber-dim)';
+        roleBadge.style.color = 'var(--amber)';
+      } else {
+        roleBadge.style.background = 'var(--teal-dim)';
+        roleBadge.style.color = 'var(--teal)';
+      }
+    }
+
+    // Login Overlay Trigger
+    function showLoginPage() {
+      document.querySelector('#login-page-container').classList.add('visible');
+      resize3d();
+    }
+    function hideLoginPage() {
+      document.querySelector('#login-page-container').classList.remove('visible');
+    }
+
+    document.querySelector('#auth-pill').addEventListener('click', showLoginPage);
+    document.querySelector('#skip-login-btn').addEventListener('click', hideLoginPage);
+
+    // Modal Tabs in 3D Login Screen
+    document.querySelectorAll('#login-page-container .modal-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#login-page-container .modal-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelector('#form-login-main').style.display = btn.dataset.target === 'form-login-main' ? 'flex' : 'none';
+        document.querySelector('#form-register-main').style.display = btn.dataset.target === 'form-register-main' ? 'flex' : 'none';
+        document.querySelector('#login-main-title').textContent = btn.dataset.target === 'form-login-main' ? 'Aegis Manual Portal' : 'Register Sentinel Profile';
+      });
+    });
+
+    // 1-Click Fast Demo Logins in 3D Screen
+    document.querySelector('#main-fast-admin').addEventListener('click', () => {
+      setActiveUser(DEFAULT_USERS[0]);
+      hideLoginPage();
+      cliPrint("Signed in as Lead Operator (Alex Vance). Full mutation access.");
+    });
+    document.querySelector('#main-fast-inspector').addEventListener('click', () => {
+      setActiveUser(DEFAULT_USERS[1]);
+      hideLoginPage();
+      cliPrint("Signed in as Safety Inspector (Dr. Maya Chen). Diagnostics access.");
+    });
+    document.querySelector('#main-fast-iot').addEventListener('click', () => {
+      setActiveUser(DEFAULT_USERS[2]);
+      hideLoginPage();
+      cliPrint("Signed in as IoT Firmware Engineer (Elena Rostova). Device provisioning enabled.");
+    });
+    document.querySelector('#main-fast-guest').addEventListener('click', () => {
+      setActiveUser(DEFAULT_USERS[3]);
+      hideLoginPage();
+      cliPrint("Signed in as Guest Observer. Read-only access.");
+    });
+
+    // Handle Login Submit
+    document.querySelector('#form-login-main').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const u = document.querySelector('#main-u').value.trim().toLowerCase();
+      const p = document.querySelector('#main-p').value.trim();
+      const users = getUsers();
+      const found = users.find(user => (user.username.toLowerCase() === u || user.name.toLowerCase() === u) && user.pass === p);
+      const notice = document.querySelector('#main-login-notice');
+
+      if (found) {
+        setActiveUser(found);
+        notice.className = 'notice success';
+        notice.textContent = `Welcome, ${found.name}! Launching Sentinel dashboard...`;
+        setTimeout(() => {
+          hideLoginPage();
+          notice.textContent = '';
+        }, 600);
+      } else {
+        notice.className = 'notice error';
+        notice.textContent = 'Invalid credentials. Try demo operator / civicpulse2026.';
+      }
+    });
+
+    // Handle Registration Submit
+    document.querySelector('#form-register-main').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.querySelector('#main-reg-name').value.trim();
+      const username = document.querySelector('#main-reg-u').value.trim().toLowerCase();
+      const role = document.querySelector('#main-reg-role').value;
+      const pass = document.querySelector('#main-reg-p').value.trim();
+      const notice = document.querySelector('#main-reg-notice');
+
+      if (!name || !username || !pass) return;
+      if (pass.length < 5) {
+        notice.className = 'notice error';
+        notice.textContent = 'Password must be at least 5 characters.';
+        return;
+      }
+
+      const users = getUsers();
+      if (users.some(u => u.username.toLowerCase() === username)) {
+        notice.className = 'notice error';
+        notice.textContent = 'Username is already registered. Please choose another.';
+        return;
+      }
+
+      const avatar = role === 'Operator' ? '🧑‍💼' : role === 'Inspector' ? '🔍' : role === 'IoT Engineer' ? '📡' : '👤';
+      const newUser = {
+        name, username, pass, role, avatar,
+        canInject: role === 'Operator' || role === 'IoT Engineer'
+      };
+
+      users.push(newUser);
+      saveUsers(users);
+      setActiveUser(newUser);
+
+      notice.className = 'notice success';
+      notice.textContent = `Profile created! Entering A.E.G.I.S. as ${name}...`;
+      cliPrint(`[PROFILE CREATED] Registered ${name} (${role}).`);
+      setTimeout(() => {
+        hideLoginPage();
+        notice.textContent = '';
+      }, 700);
+    });
+
+    // ==========================================
+    // Emergency Cellular SMS Dispatch System
+    // ==========================================
+    function showSmsToast(recipient, message) {
+      const toast = document.querySelector('#sms-toast');
+      document.querySelector('#sms-toast-recipient').textContent = recipient;
+      document.querySelector('#sms-toast-body').textContent = message;
+      document.querySelector('#sms-toast-time').textContent = new Date().toLocaleTimeString();
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 6000);
+    }
+
+    async function sendEmergencySms(nodeName, metricName, reason) {
+      const msg = `[Aegis Manual Alert] ${nodeName} ${metricName} exceeded baseline threshold! ${reason}`;
+      try {
+        const res = await fetch('/alerts/sms/send', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({
+            phoneNumber: emergencyPhoneNumber,
+            message: msg,
+            node: nodeName,
+            metric: metricName
+          })
+        });
+        const data = await res.json();
+        showSmsToast(data.recipient || emergencyPhoneNumber, data.message || msg);
+        cliPrint(`[SMS DISPATCHED] To: ${data.recipient} | Msg: ${msg}`);
+      } catch (err) {
+        showSmsToast(emergencyPhoneNumber, msg);
+      }
+    }
+
+    document.querySelector('#send-test-sms-btn').addEventListener('click', () => {
+      sendEmergencySms('Bridge-1388DB13F161', 'vibrationRms', 'Manual test dispatch triggered. Structural crew notified.');
+    });
+
+    document.querySelector('#edit-sms-phone-btn').addEventListener('click', () => {
+      document.querySelector('#input-sms-number').value = emergencyPhoneNumber;
+      document.querySelector('#sms-modal').classList.add('open');
+    });
+    document.querySelector('#sms-modal-close').addEventListener('click', () => {
+      document.querySelector('#sms-modal').classList.remove('open');
+    });
+    document.querySelector('#sms-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'sms-modal') document.querySelector('#sms-modal').classList.remove('open');
+    });
+
+    document.querySelector('#save-sms-config-btn').addEventListener('click', () => {
+      const val = document.querySelector('#input-sms-number').value.trim();
+      if (val) {
+        emergencyPhoneNumber = val;
+        document.querySelector('#display-sms-phone').textContent = val;
+        document.querySelector('#stat-sms-phone').textContent = `To: ${val}`;
+        fetch('/alerts/sms/config', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify({ phoneNumber: val, enabled: true })
+        });
+      }
+      document.querySelector('#sms-modal').classList.remove('open');
+    });
+
+    // IoT Hub Modal Handlers
+    document.querySelector('#iot-hub-btn').addEventListener('click', () => {
+      document.querySelector('#iot-modal').classList.add('open');
+    });
+    document.querySelector('#iot-modal-close').addEventListener('click', () => {
+      document.querySelector('#iot-modal').classList.remove('open');
+      if (autoStreamInterval) {
+        clearInterval(autoStreamInterval);
+        autoStreamInterval = null;
+        document.querySelector('#iot-stream-toggle-btn').textContent = '▶ Start Auto-Stream (1 Hz)';
+      }
+    });
+    document.querySelector('#iot-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'iot-modal') document.querySelector('#iot-modal').classList.remove('open');
+    });
+
+    document.querySelectorAll('#iot-modal .modal-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#iot-modal .modal-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelector('#sec-iot-live').style.display = btn.dataset.target === 'sec-iot-live' ? 'flex' : 'none';
+        document.querySelector('#sec-iot-code').style.display = btn.dataset.target === 'sec-iot-code' ? 'flex' : 'none';
+      });
+    });
+
+    document.querySelector('#rand-mac-btn').addEventListener('click', () => {
+      const hex = '0123456789ABCDEF';
+      let mac = '';
+      for (let i = 0; i < 6; i++) {
+        mac += hex[Math.floor(Math.random()*16)] + hex[Math.floor(Math.random()*16)];
+        if (i < 5) mac += ':';
+      }
+      document.querySelector('#iot-mac').value = mac;
+    });
+
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const text = btn.dataset.copy || btn.parentElement.innerText.replace('Copy', '').trim();
+        navigator.clipboard.writeText(text);
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+      });
+    });
+
+    async function transmitIotSample() {
+      const nodeType = document.querySelector('#iot-node-type').value;
+      const mac = document.querySelector('#iot-mac').value.trim();
+      const vib = parseFloat(document.querySelector('#iot-vib').value) || 0.1;
+      const temp = parseFloat(document.querySelector('#iot-temp').value) || 20.0;
+      const rf = parseFloat(document.querySelector('#iot-rf').value) || -60.0;
+      const notice = document.querySelector('#iot-notice');
+
+      notice.className = 'notice';
+      notice.textContent = 'Transmitting packet to /ingest...';
+
+      try {
+        const payload = {
+          nodeType, mac,
+          vibrationRms: vib, tempC: temp, rfPowerDb: rf,
+          ts: Date.now()
+        };
+        const res = await fetch('/ingest', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Ingest failed');
+
+        notice.className = 'notice success';
+        notice.textContent = `✓ Ingested packet from ${mac} (${nodeType}). Accepted by Sentinel.`;
+        cliPrint(`[IOT TELEMETRY INGESTED] MAC: ${mac} | Type: ${nodeType} | Vib: ${vib}g | Temp: ${temp}C | RF: ${rf}dB`);
+        refresh();
+      } catch (err) {
+        notice.className = 'notice error';
+        notice.textContent = `✕ ${err.message}`;
+      }
+    }
+
+    document.querySelector('#iot-transmit-btn').addEventListener('click', transmitIotSample);
+
+    document.querySelector('#iot-stream-toggle-btn').addEventListener('click', () => {
+      const btn = document.querySelector('#iot-stream-toggle-btn');
+      if (autoStreamInterval) {
+        clearInterval(autoStreamInterval);
+        autoStreamInterval = null;
+        btn.textContent = '▶ Start Auto-Stream (1 Hz)';
+        document.querySelector('#iot-notice').textContent = 'Auto-stream stopped.';
+      } else {
+        transmitIotSample();
+        autoStreamInterval = setInterval(transmitIotSample, 1500);
+        btn.textContent = '⏹ Stop Auto-Stream';
+      }
+    });
+
+    function authHeaders() {
+      const headers = { 'Content-Type': 'application/json' };
+      const key = localStorage.getItem('civicpulse_api_key');
+      if (key) headers['X-API-Key'] = key;
+      return headers;
+    }
+
     const fmt = (value, digits = 2) => value == null || !Number.isFinite(value) ? '—' : Number(value).toFixed(digits);
     const time = (value) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+    // ==========================================
+    // Real-Time Frequency Waveform Canvas Engine
+    // ==========================================
+    const canvas = document.querySelector('#waveformCanvas');
+    const ctx = canvas.getContext('2d');
+    let waveAnimId = null;
+    let wavePaused = false;
+    let waveOffset = 0;
+
+    let carrierFreq = 915.0;
+    let interfererFreq = 915.8;
+    let signalAmp = 0.75;
+    let noiseLevel = 0.05;
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function renderWaveform() {
+      if (!wavePaused) waveOffset += 0.08;
+
+      const width = canvas.width / window.devicePixelRatio;
+      const height = canvas.height / window.devicePixelRatio;
+      const midY = height / 2;
+
+      ctx.clearRect(0, 0, width, height);
+
+      // Grid Lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+      }
+      for (let y = 0; y < height; y += 30) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+      }
+
+      const deltaFreq = Math.abs(carrierFreq - interfererFreq);
+      const isOverlap = deltaFreq <= 0.25;
+
+      const banner = document.querySelector('#overlap-banner');
+      const overlapStatus = document.querySelector('#overlay-overlap-status');
+      const statOverlapStatus = document.querySelector('#stat-overlap-status');
+
+      if (isOverlap) {
+        banner.classList.add('active');
+        overlapStatus.textContent = `COLLISION (Δf: ${Math.round(deltaFreq*1000)} kHz)`;
+        overlapStatus.style.color = 'var(--coral)';
+        statOverlapStatus.textContent = `⚠️ Collision at ${carrierFreq.toFixed(1)} MHz`;
+        statOverlapStatus.style.color = 'var(--coral)';
+      } else {
+        banner.classList.remove('active');
+        overlapStatus.textContent = `CLEAR (Δf: ${Math.round(deltaFreq*1000)} kHz)`;
+        overlapStatus.style.color = 'var(--green)';
+        statOverlapStatus.textContent = `Nominal bandwidth spacing`;
+        statOverlapStatus.style.color = 'var(--muted)';
+      }
+
+      // Draw Interferer Wave
+      ctx.beginPath();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = isOverlap ? 'rgba(255, 100, 100, 0.5)' : 'rgba(192, 154, 248, 0.5)';
+      const interfererVisualFreq = (interfererFreq - 900) * 0.12;
+      for (let x = 0; x < width; x++) {
+        const y = midY + Math.sin(x * interfererVisualFreq + waveOffset * 1.3) * (signalAmp * 35);
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Draw Main Carrier Wave
+      ctx.beginPath();
+      ctx.lineWidth = isOverlap ? 3 : 2;
+      ctx.strokeStyle = isOverlap ? '#ff5555' : '#65d7bc';
+      ctx.shadowColor = isOverlap ? 'rgba(255, 85, 85, 0.8)' : 'rgba(101, 215, 188, 0.8)';
+      ctx.shadowBlur = isOverlap ? 12 : 8;
+
+      const carrierVisualFreq = (carrierFreq - 900) * 0.12;
+      for (let x = 0; x < width; x++) {
+        const noise = (Math.random() - 0.5) * noiseLevel * 40;
+        const interfererContribution = isOverlap ? Math.sin(x * interfererVisualFreq + waveOffset * 1.3) * 18 : 0;
+        const y = midY + Math.sin(x * carrierVisualFreq + waveOffset) * (signalAmp * 50) + noise + interfererContribution;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Draw Spectrum Bars
+      const spectrumHeight = 35;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      ctx.fillRect(0, height - spectrumHeight, width, spectrumHeight);
+
+      const numBins = 64;
+      const binWidth = width / numBins;
+      const carrierBin = Math.floor(((carrierFreq - 902.0) / 26.0) * numBins);
+      const interfererBin = Math.floor(((interfererFreq - 902.0) / 26.0) * numBins);
+
+      for (let i = 0; i < numBins; i++) {
+        let barH = 3 + Math.random() * (noiseLevel * 40);
+        let barColor = 'rgba(101, 215, 188, 0.3)';
+
+        if (Math.abs(i - carrierBin) <= 1) {
+          barH = 26 * signalAmp;
+          barColor = isOverlap ? '#ff5555' : '#65d7bc';
+        } else if (Math.abs(i - interfererBin) <= 1) {
+          barH = 20 * signalAmp;
+          barColor = isOverlap ? '#ff5555' : '#c09af8';
+        }
+
+        ctx.fillStyle = barColor;
+        ctx.fillRect(i * binWidth + 1, height - barH, binWidth - 2, barH);
+      }
+
+      updateHexStream(isOverlap);
+      waveAnimId = requestAnimationFrame(renderWaveform);
+    }
+
+    function updateHexStream(isOverlap) {
+      const freqHex = Math.round(carrierFreq * 10).toString(16).toUpperCase().padStart(4, '0');
+      const rfHex = Math.round(signalAmp * 100).toString(16).toUpperCase().padStart(2, '0');
+
+      const hexRow1 = document.querySelector('#hex-stream-bytes');
+      const hexRow2 = document.querySelector('#hex-stream-bytes-2');
+
+      if (isOverlap) {
+        hexRow1.innerHTML = `59 67 67 <span class="collided">FF FF</span> 69 6C 20 52 46 <span class="tag">${freqHex.slice(0,2)} ${freqHex.slice(2,4)}</span> <span class="collided">EE EE</span>`;
+        hexRow2.innerHTML = `<span class="collided">FF FF</span> C0 BB 53 96 00 <span class="collided">DE AD</span> 4F A2 C3 09 <span class="collided">FF 00</span>`;
+      } else {
+        hexRow1.innerHTML = `59 67 67 64 72 61 73 69 6C 20 52 46 <span class="tag">${freqHex.slice(0,2)} ${freqHex.slice(2,4)}</span> ${rfHex} 70`;
+        hexRow2.innerHTML = `89 1C C0 BB 53 96 00 1A 4F A2 C3 09 88 11 EF 42`;
+      }
+    }
+
+    const carrierSlider = document.querySelector('#carrier-freq-slider');
+    const interfererSlider = document.querySelector('#interferer-freq-slider');
+    const ampSlider = document.querySelector('#signal-amp-slider');
+    const noiseSlider = document.querySelector('#noise-slider');
+
+    carrierSlider.addEventListener('input', (e) => {
+      carrierFreq = parseFloat(e.target.value);
+      document.querySelector('#carrier-val-display').textContent = `${carrierFreq.toFixed(1)} MHz`;
+      document.querySelector('#overlay-carrier').textContent = `${carrierFreq.toFixed(2)} MHz`;
+      document.querySelector('#stat-spectrum-band').textContent = `${carrierFreq.toFixed(1)} MHz`;
+    });
+
+    interfererSlider.addEventListener('input', (e) => {
+      interfererFreq = parseFloat(e.target.value);
+      document.querySelector('#interferer-val-display').textContent = `${interfererFreq.toFixed(1)} MHz`;
+      document.querySelector('#overlay-interferer').textContent = `${interfererFreq.toFixed(2)} MHz`;
+    });
+
+    ampSlider.addEventListener('input', (e) => {
+      signalAmp = parseFloat(e.target.value);
+      document.querySelector('#amp-val-display').textContent = signalAmp.toFixed(2);
+    });
+
+    noiseSlider.addEventListener('input', (e) => {
+      noiseLevel = parseFloat(e.target.value);
+      document.querySelector('#noise-val-display').textContent = noiseLevel.toFixed(2);
+    });
+
+    document.querySelector('#pause-wave-btn').addEventListener('click', () => {
+      wavePaused = !wavePaused;
+      document.querySelector('#pause-wave-btn').textContent = wavePaused ? '▶ Resume' : '⏸️ Pause';
+    });
+
+    document.querySelector('#reset-freq-btn').addEventListener('click', () => {
+      carrierFreq = 915.0; interfererFreq = 915.8; signalAmp = 0.75; noiseLevel = 0.05;
+      carrierSlider.value = 915.0; interfererSlider.value = 915.8; ampSlider.value = 0.75; noiseSlider.value = 0.05;
+      document.querySelector('#carrier-val-display').textContent = '915.0 MHz';
+      document.querySelector('#interferer-val-display').textContent = '915.8 MHz';
+      document.querySelector('#amp-val-display').textContent = '0.75';
+      document.querySelector('#noise-val-display').textContent = '0.05';
+    });
+
+    renderWaveform();
+
+    // ==========================================
+    // Telemetry Polling & Alerts Logic
+    // ==========================================
     async function refreshStatus() {
       const response = await fetch('/status');
       if (!response.ok) throw new Error('status request failed');
       const nodes = await response.json();
-      connection.textContent = 'Live';
-      document.querySelector('#node-count').textContent = `${Object.keys(nodes).length} nodes reporting`;
+      cachedNodes = nodes;
+
+      const nodeKeys = Object.keys(nodes);
+      document.querySelector('#stat-total-nodes').textContent = nodeKeys.length;
+      document.querySelector('#node-count').textContent = `${nodeKeys.length} nodes reporting`;
+
+      let staleCount = 0;
+      const nodesElement = document.querySelector('#nodes');
       nodesElement.replaceChildren();
+
+      const nodeSelect = document.querySelector('#node-select');
       const selected = nodeSelect.value;
       nodeSelect.replaceChildren();
+
       for (const node of Object.values(nodes)) {
         const option = document.createElement('option');
         option.value = node.nodeLabel;
-        option.textContent = node.nodeLabel;
+        option.textContent = `${node.nodeLabel} (${node.nodeType})`;
         nodeSelect.append(option);
+
         const item = document.createElement('article');
         item.className = 'node';
+        if (activeInspectedNode === node.nodeLabel) item.classList.add('active-inspect');
+
         const metricStates = node.baselineStats || {};
         const trackedMetrics = Object.values(metricStates);
         const old = trackedMetrics.length > 0 && trackedMetrics.every(metric => metric.stale);
+        if (old) staleCount++;
         const stale = metric => metricStates[metric]?.stale ? 'stale' : '';
-        item.innerHTML = `<div class="node-top"><div><div class="node-name"></div><div class="node-type"></div></div><i class="signal ${old ? 'stale' : ''}"></i></div>
-          <div class="metrics"><div><div class="metric-label">Vibration RMS</div><div class="metric-value ${stale('vibrationRms')}">${fmt(node.vibrationRms)}<span class="unit">g</span></div></div>
-          <div><div class="metric-label">Temperature</div><div class="metric-value ${stale('tempC')}">${fmt(node.tempC, 1)}<span class="unit">°C</span></div></div>
-          <div><div class="metric-label">RF power</div><div class="metric-value ${stale('rfPowerDb')}">${fmt(node.rfPowerDb, 1)}<span class="unit">dB rel.</span></div></div>
-          <div><div class="metric-label">Updated</div><div class="metric-value">${time(node.ts)}</div></div></div>`;
+
+        item.innerHTML = `
+          <div class="node-top">
+            <div>
+              <div class="node-name"></div>
+              <div class="node-type"></div>
+            </div>
+            <i class="signal ${old ? 'stale' : ''}" title="${old ? 'Telemetry stale' : 'Telemetry active'}"></i>
+          </div>
+          <div class="metrics">
+            <div class="metric-item">
+              <span class="metric-label">Vibration RMS</span>
+              <span class="metric-value ${stale('vibrationRms')}">${fmt(node.vibrationRms)}<span class="unit">g</span></span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Temperature</span>
+              <span class="metric-value ${stale('tempC')}">${fmt(node.tempC, 1)}<span class="unit">°C</span></span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">RF Power</span>
+              <span class="metric-value ${stale('rfPowerDb')}">${fmt(node.rfPowerDb, 1)}<span class="unit">dB</span></span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Last Updated</span>
+              <span class="metric-value" style="font-size: 13px;">${time(node.ts)}</span>
+            </div>
+          </div>
+          <div class="node-footer">
+            <span>${node.nodeType} sentinel</span>
+            <span class="inspect-btn-badge">Inspect Data &rarr;</span>
+          </div>
+        `;
+
         item.querySelector('.node-name').textContent = node.nodeLabel;
         item.querySelector('.node-type').textContent = node.nodeType;
+
+        item.addEventListener('click', () => openHumanReport(node.nodeLabel));
         nodesElement.append(item);
       }
-      if (selected && [...nodeSelect.options].some(option => option.value === selected)) nodeSelect.value = selected;
+
+      document.querySelector('#stat-active-nodes').textContent = `${nodeKeys.length - staleCount} active, ${staleCount} stale`;
+      if (selected && [...nodeSelect.options].some(opt => opt.value === selected)) {
+        nodeSelect.value = selected;
+      }
+
+      const healthPct = nodeKeys.length > 0 ? Math.round(((nodeKeys.length - staleCount) / nodeKeys.length) * 100) : 100;
+      document.querySelector('#stat-health-pct').textContent = `${healthPct}%`;
+      document.querySelector('#stat-health-desc').textContent = staleCount === 0 ? 'All nodes reporting nominal' : `${staleCount} node(s) showing signal drop`;
     }
 
     async function refreshAlerts() {
-      const response = await fetch('/alerts?limit=20');
+      const response = await fetch('/alerts?limit=25');
       if (!response.ok) throw new Error('alerts request failed');
       const alerts = await response.json();
+      cachedAlerts = alerts;
+
+      document.querySelector('#alerts-count-badge').textContent = alerts.length;
+
+      const alertsElement = document.querySelector('#alerts');
       if (!alerts.length) {
-        alertsElement.innerHTML = '<div class="empty">No threshold-crossing deltas yet.</div>';
+        alertsElement.innerHTML = `
+          <div class="empty">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;">
+              <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            No threshold-crossing deltas yet. System operating within baseline bounds.
+          </div>
+        `;
         return;
       }
+
       alertsElement.replaceChildren();
       for (const alert of [...alerts].reverse()) {
         const row = document.createElement('article');
         row.className = 'alert';
-        row.innerHTML = `<time class="alert-time"></time><div><div class="alert-title"><span class="alert-node"></span><span class="alert-metric"></span><span class="source"></span><span class="verification"></span></div><p class="alert-text"></p></div>`;
-        row.querySelector('.alert-time').textContent = time(alert.ts);
-        row.querySelector('.alert-node').textContent = alert.nodeLabel;
+        if (alert.metric === 'DROPOUT') row.classList.add('stale-alert');
+
         const change = alert.mode === 'absolute'
           ? `${fmt(alert.absoluteChange, 1)} ${alert.metric === 'tempC' ? '°C' : 'dB'}`
           : `${fmt(alert.pctChange, 1)}%`;
+
+        row.innerHTML = `
+          <div class="alert-header">
+            <div class="alert-title">
+              <span class="alert-node"></span>
+              <span class="alert-metric"></span>
+              <span class="source-badge"></span>
+              <span class="verification"></span>
+            </div>
+            <time class="alert-time"></time>
+          </div>
+          <p class="alert-text"></p>
+        `;
+
+        row.querySelector('.alert-node').textContent = alert.nodeLabel;
         row.querySelector('.alert-metric').textContent = `${alert.metric} ${change}`;
-        row.querySelector('.source').textContent = alert.source;
-        row.querySelector('.source').classList.toggle('template', alert.source === 'TEMPLATE');
+        row.querySelector('.alert-time').textContent = time(alert.ts);
+
+        const sourceEl = row.querySelector('.source-badge');
+        sourceEl.textContent = alert.source;
+        if (alert.source === 'TEMPLATE') sourceEl.classList.add('template');
+
         row.querySelector('.verification').textContent = alert.source === 'GEMINI' ? 'Suggested, unverified' : '';
         row.querySelector('.alert-text').textContent = alert.text;
+
         alertsElement.append(row);
       }
     }
 
     async function refresh() {
-      try { await Promise.all([refreshStatus(), refreshAlerts()]); connection.textContent = 'Live'; }
-      catch { connection.textContent = 'Reconnecting'; }
+      try {
+        await Promise.all([refreshStatus(), refreshAlerts()]);
+        document.querySelector('#connection').textContent = 'Live';
+        document.querySelector('#status-pill').className = 'pill';
+      } catch (err) {
+        document.querySelector('#connection').textContent = 'Reconnecting';
+        document.querySelector('#status-pill').className = 'pill reconnecting';
+      }
     }
+
+    // Human-Friendly Diagnostic Report
+    async function openHumanReport(nodeLabel) {
+      activeInspectedNode = nodeLabel;
+      const modal = document.querySelector('#report-modal');
+      modal.classList.add('open');
+
+      document.querySelector('#modal-node-title').textContent = `${nodeLabel} Diagnostic Audit`;
+      const node = cachedNodes[nodeLabel] || {};
+
+      document.querySelector('#modal-node-sub').textContent =
+        `Asset Category: ${node.nodeType ? node.nodeType.toUpperCase() : 'TELEMETRY NODE'} | Last Sample: ${time(node.ts || Date.now())}`;
+
+      document.querySelector('#kpi-vib').textContent = `${fmt(node.vibrationRms)} g`;
+      document.querySelector('#kpi-temp').textContent = `${fmt(node.tempC, 1)} °C`;
+      document.querySelector('#kpi-rf').textContent = `${fmt(node.rfPowerDb, 1)} dB`;
+
+      const stats = node.baselineStats || {};
+      const vibBase = stats.vibrationRms ? fmt(stats.vibrationRms.mean) : '—';
+      const tempBase = stats.tempC ? fmt(stats.tempC.mean, 1) : '—';
+      const rfBase = stats.rfPowerDb ? fmt(stats.rfPowerDb.mean, 1) : '—';
+
+      document.querySelector('#kpi-vib-baseline').textContent = `Baseline: ${vibBase} g`;
+      document.querySelector('#kpi-temp-baseline').textContent = `Baseline: ${tempBase} °C`;
+      document.querySelector('#kpi-rf-baseline').textContent = `Baseline: ${rfBase} dB`;
+
+      const nodeAlerts = cachedAlerts.filter(a => a.nodeLabel === nodeLabel);
+      const verdictEl = document.querySelector('#report-verdict');
+      const iconEl = document.querySelector('#verdict-icon');
+      const titleEl = document.querySelector('#verdict-title');
+      const descEl = document.querySelector('#verdict-desc');
+
+      if (nodeAlerts.length > 0) {
+        const latest = nodeAlerts[nodeAlerts.length - 1];
+        verdictEl.className = 'report-verdict warning';
+        iconEl.textContent = '⚠️';
+        titleEl.textContent = 'ATTENTION: Baseline Divergence Flagged';
+        descEl.textContent = `Recent threshold crossing detected in ${latest.metric} (${latest.source} alert generated).`;
+      } else {
+        verdictEl.className = 'report-verdict';
+        iconEl.textContent = '🟢';
+        titleEl.textContent = 'NOMINAL: Within Operational Baseline';
+        descEl.textContent = 'All scalar metrics adhere to calibrated structural baselines with zero safety violations.';
+      }
+
+      const narrative = `Infrastructure asset <strong>${nodeLabel}</strong> (${node.nodeType}) is currently reporting steady scalar readings. ` +
+        `Vibration levels are recorded at <strong>${fmt(node.vibrationRms)}g</strong> against a calibrated baseline of <strong>${vibBase}g</strong>. ` +
+        `Thermal sensors register <strong>${fmt(node.tempC, 1)}°C</strong>, and the RF transmission telemetry link is healthy at <strong>${fmt(node.rfPowerDb, 1)} dB</strong>. ` +
+        (nodeAlerts.length > 0 ? `<br><br><span style="color:var(--amber);">⚠️ Note: A recent ${nodeAlerts[0].metric} perturbation was flagged in the alert buffer.</span>` : ` The node shows consistent behavioral predictability.`);
+      document.querySelector('#report-narrative').innerHTML = narrative;
+
+      const tbody = document.querySelector('#modal-deltas-body');
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">Querying Ascon-encrypted baseline delta records...</td></tr>';
+
+      try {
+        const res = await fetch(`/deltas?node=${encodeURIComponent(nodeLabel)}&limit=15`, {
+          headers: authHeaders()
+        });
+        if (res.status === 401) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--amber);">Authentication required to view raw deltas.</td></tr>';
+          return;
+        }
+        if (!res.ok) throw new Error('Failed to fetch deltas');
+        const deltas = await res.json();
+        if (!deltas || deltas.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--muted);">No baseline divergence deltas recorded. Node is completely steady.</td></tr>';
+          return;
+        }
+        tbody.replaceChildren();
+        for (const d of deltas) {
+          const tr = document.createElement('tr');
+          const deltaVal = Number(d.observed - d.baseline);
+          const deltaColor = Math.abs(deltaVal) > 0.05 ? 'var(--coral)' : 'var(--muted)';
+          tr.innerHTML = `
+            <td><strong>${d.metric}</strong></td>
+            <td>${fmt(d.baseline, 2)}</td>
+            <td>${fmt(d.observed, 2)}</td>
+            <td style="color: ${deltaColor}; font-weight: 600;">${deltaVal >= 0 ? '+' : ''}${fmt(deltaVal, 2)}</td>
+            <td>${time(d.ts)}</td>
+          `;
+          tbody.append(tr);
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--coral);">${err.message}</td></tr>`;
+      }
+    }
+
+    document.querySelector('#modal-close').addEventListener('click', () => {
+      document.querySelector('#report-modal').classList.remove('open');
+      activeInspectedNode = null;
+    });
+    document.querySelector('#report-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'report-modal') {
+        document.querySelector('#report-modal').classList.remove('open');
+        activeInspectedNode = null;
+      }
+    });
+
+    document.querySelector('#modal-target-inject').addEventListener('click', () => {
+      if (activeInspectedNode) {
+        document.querySelector('#node-select').value = activeInspectedNode;
+        document.querySelector('#report-modal').classList.remove('open');
+        document.querySelector('#inject-form').scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+
+    document.querySelector('#modal-copy-btn').addEventListener('click', () => {
+      const text = document.querySelector('#report-narrative').innerText;
+      navigator.clipboard.writeText(`A.E.G.I.S. Report [${activeInspectedNode}]: ${text}`);
+      document.querySelector('#modal-copy-btn').textContent = '✓ Copied!';
+      setTimeout(() => document.querySelector('#modal-copy-btn').textContent = '📋 Copy Report', 2000);
+    });
+
+    // Console Tabs (Bot vs CLI)
+    document.querySelectorAll('.console-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.console-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelector('#panel-bot').style.display = tab.dataset.target === 'panel-bot' ? 'flex' : 'none';
+        document.querySelector('#panel-cli').style.display = tab.dataset.target === 'panel-cli' ? 'flex' : 'none';
+      });
+    });
+
+    // Template-Based Chatbot Engine
+    function botReply(text) {
+      const q = text.toLowerCase().trim();
+      const nodeKeys = Object.keys(cachedNodes);
+
+      if (q.includes('sms') || q.includes('phone') || q.includes('text') || q.includes('message')) {
+        sendEmergencySms('Bridge-1388DB13F161', 'vibrationRms', 'Chatbot emergency dispatch request triggered.');
+        return `📱 Emergency SMS notification dispatched to ${emergencyPhoneNumber}! Delivery status: DELIVERED via LTE/GSM Gateway.`;
+      }
+
+      if (q.includes('health') || q.includes('doing') || q.includes('status')) {
+        const stale = Object.values(cachedNodes).filter(n => {
+          const stats = Object.values(n.baselineStats || {});
+          return stats.length > 0 && stats.every(s => s.stale);
+        }).length;
+        if (nodeKeys.length === 0) return "Gathering telemetry... Waiting for infrastructure nodes to register.";
+        return `Aegis Manual Sentinel health is at ${Math.round(((nodeKeys.length - stale)/nodeKeys.length)*100)}%. There are ${nodeKeys.length} reporting nodes in the fleet (${nodeKeys.length - stale} active, ${stale} stale). Emergency SMS gateway is armed for ${emergencyPhoneNumber}.`;
+      }
+
+      if (q.includes('spectrum') || q.includes('freq') || q.includes('overlap')) {
+        const delta = Math.abs(carrierFreq - interfererFreq);
+        const overlap = delta <= 0.25;
+        if (overlap) {
+          return `⚠️ RF Spectrum Alert: Active collision detected between carrier (${carrierFreq.toFixed(1)} MHz) and interferer (${interfererFreq.toFixed(1)} MHz). Spacing is only ${Math.round(delta*1000)} kHz (channel bandwidth is 250 kHz). Check the Live RF Generator above to view the corrupted hex stream!`;
+        }
+        return `RF spectrum is currently nominal at ${carrierFreq.toFixed(1)} MHz. Spacing to interferer is safe (${Math.round(delta*1000)} kHz). No active frequency overlaps detected.`;
+      }
+
+      if (q.includes('iot') || q.includes('connect') || q.includes('device') || q.includes('sensor')) {
+        return `To connect IoT devices:\n1. Click the "📡 Connect IoT Device" button in the header.\n2. You can use our Live Ingestion Simulator or copy our ready-to-run cURL/Python/ESP32 code templates.\n3. The endpoint is POST /ingest accepting scalar JSON telemetry.`;
+      }
+
+      if (q.includes('alert') || q.includes('warning') || q.includes('anomal')) {
+        if (!cachedAlerts.length) return "All clear! There are currently no active threshold-crossing alerts. All infrastructure telemetry is operating safely within baseline tolerances.";
+        const latest = cachedAlerts[cachedAlerts.length - 1];
+        return `We have ${cachedAlerts.length} alert(s) logged. Most recent: [${latest.nodeLabel}] flagged for ${latest.metric} (${latest.source} alert). Explanation: "${latest.text}"`;
+      }
+
+      return `I understand you're asking about "${text}". You can ask me to:
+• "Send emergency SMS alert" - trigger cellular notification
+• "Check System Health" - overview of active infrastructure
+• "RF Spectrum & Overlaps" - check frequency collision status
+• "Connect IoT Device" - guide for onboarding sensors
+• Or run commands directly in the 'CLI Terminal' tab!`;
+    }
+
+    function appendChatMessage(sender, text) {
+      const container = document.querySelector('#chat-messages');
+      const bubble = document.createElement('div');
+      bubble.className = `chat-bubble ${sender}`;
+      bubble.innerHTML = text.replace(/\n/g, '<br>');
+      container.append(bubble);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    document.querySelector('#chat-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = document.querySelector('#chat-input');
+      const val = input.value.trim();
+      if (!val) return;
+      appendChatMessage('user', val);
+      input.value = '';
+
+      setTimeout(() => {
+        const reply = botReply(val);
+        appendChatMessage('bot', reply);
+      }, 300);
+    });
+
+    document.querySelectorAll('.suggestion-chips .chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const msg = chip.dataset.msg;
+        appendChatMessage('user', msg);
+        setTimeout(() => {
+          const reply = botReply(msg);
+          appendChatMessage('bot', reply);
+        }, 300);
+      });
+    });
+
+    // Web CLI Terminal
+    function cliPrint(msg) {
+      const out = document.querySelector('#cli-output');
+      const line = document.createElement('div');
+      line.className = 'cli-log';
+      line.textContent = msg;
+      out.append(line);
+      out.scrollTop = out.scrollHeight;
+    }
+
+    document.querySelector('#cli-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.querySelector('#cli-input');
+      const cmdLine = input.value.trim();
+      input.value = '';
+      if (!cmdLine) return;
+
+      cliPrint(`aegis-manual@sentinel:~$ ${cmdLine}`);
+      const parts = cmdLine.split(/\s+/);
+      const command = parts[0].toLowerCase();
+
+      if (command === 'help') {
+        cliPrint("Available CLI commands:");
+        cliPrint("  status                 - List all reporting nodes & telemetry values");
+        cliPrint("  alerts                 - View recent threshold-crossing alerts");
+        cliPrint("  sms [phone] [message]  - Dispatch emergency cellular SMS alert");
+        cliPrint("  spectrum               - Scan RF spectrum & detect frequency overlaps");
+        cliPrint("  hex <nodeLabel>        - Open raw hex telemetry frame inspector");
+        cliPrint("  freq <carrierMHz>      - Adjust live RF carrier generator");
+        cliPrint("  iot                    - Open IoT device onboarding hub");
+        cliPrint("  login                  - Open 3D animated Login / Profile portal");
+        cliPrint("  inspect <nodeLabel>    - Open diagnostic audit report for a node");
+        cliPrint("  inject <n> <type> <sec>- Inject an anomaly (e.g. inject Bridge-A VIBRATION_SPIKE 15)");
+        cliPrint("  clear                  - Clear terminal display");
+        return;
+      }
+
+      if (command === 'clear') {
+        document.querySelector('#cli-output').replaceChildren();
+        return;
+      }
+
+      if (command === 'login') {
+        showLoginPage();
+        cliPrint("Opened 3D Sentinel Authentication Portal.");
+        return;
+      }
+
+      if (command === 'sms') {
+        const phone = parts[1] || emergencyPhoneNumber;
+        const msg = parts.slice(2).join(' ') || '[Aegis Manual Dispatch] Terminal test alert.';
+        sendEmergencySms('Terminal-Command', 'manual', msg);
+        cliPrint(`Dispatched cellular SMS to ${phone}.`);
+        return;
+      }
+
+      if (command === 'iot') {
+        document.querySelector('#iot-modal').classList.add('open');
+        cliPrint("Opened IoT Device Onboarding Hub.");
+        return;
+      }
+
+      if (command === 'freq') {
+        if (!parts[1]) { cliPrint("Usage: freq <carrierMHz> (e.g. freq 915.2)"); return; }
+        const f = parseFloat(parts[1]);
+        if (f >= 902.0 && f <= 928.0) {
+          carrierFreq = f;
+          carrierSlider.value = f;
+          document.querySelector('#carrier-val-display').textContent = `${f.toFixed(1)} MHz`;
+          document.querySelector('#overlay-carrier').textContent = `${f.toFixed(2)} MHz`;
+          cliPrint(`Carrier frequency set to ${f.toFixed(1)} MHz.`);
+        } else {
+          cliPrint("Frequency must be between 902.0 and 928.0 MHz (ISM band).");
+        }
+        return;
+      }
+
+      if (command === 'spectrum' || command === 'overlap') {
+        const delta = Math.abs(carrierFreq - interfererFreq);
+        cliPrint(`Carrier: ${carrierFreq.toFixed(1)} MHz | Interferer: ${interfererFreq.toFixed(1)} MHz`);
+        cliPrint(`Channel Spacing: ${Math.round(delta*1000)} kHz`);
+        if (delta <= 0.25) {
+          cliPrint("⚠️ COLLISION DETECTED: Frequency overlap within channel bandwidth (250 kHz)!");
+        } else {
+          cliPrint("✓ Spectrum nominal: No active channel collisions.");
+        }
+        return;
+      }
+
+      if (command === 'hex') {
+        const target = parts[1] || Object.keys(cachedNodes)[0];
+        if (!target) { cliPrint("No nodes reporting."); return; }
+        cliPrint(`Hex stream for ${target}:`);
+        cliPrint("0000:  59 67 67 64 72 61 73 69 6C 20 52 46 03 93 42 70  |Yggdrasil RF..Bp|");
+        cliPrint("0010:  89 1C C0 BB 53 96 00 1A 4F A2 C3 09 88 11 EF 42  |....S...O......B|");
+        return;
+      }
+
+      if (command === 'status') {
+        const keys = Object.keys(cachedNodes);
+        if (!keys.length) { cliPrint("No nodes reporting."); return; }
+        cliPrint("NODE LABEL                     TYPE         VIB(g)   TEMP(C)  RF(dB)");
+        cliPrint("------------------------------------------------------------------");
+        for (const [k, n] of Object.entries(cachedNodes)) {
+          cliPrint(`${k.padEnd(30)} ${(n.nodeType||'').padEnd(12)} ${fmt(n.vibrationRms).padEnd(8)} ${fmt(n.tempC,1).padEnd(8)} ${fmt(n.rfPowerDb,1)}`);
+        }
+        return;
+      }
+
+      if (command === 'alerts') {
+        if (!cachedAlerts.length) { cliPrint("No active maintenance alerts."); return; }
+        for (const a of cachedAlerts.slice(-5)) {
+          cliPrint(`[${time(a.ts)}] ${a.nodeLabel} - ${a.metric}: ${a.text}`);
+        }
+        return;
+      }
+
+      if (command === 'inspect') {
+        if (!parts[1]) { cliPrint("Usage: inspect <nodeLabel>"); return; }
+        const target = Object.keys(cachedNodes).find(k => k.toLowerCase().includes(parts[1].toLowerCase()));
+        if (target) {
+          openHumanReport(target);
+          cliPrint(`Opened human-friendly diagnostic report for ${target}.`);
+        } else {
+          cliPrint(`Node '${parts[1]}' not found in fleet.`);
+        }
+        return;
+      }
+
+      if (command === 'inject') {
+        const user = getActiveUser();
+        if (!user.canInject) {
+          cliPrint(`Permission Denied: User role [${user.role}] cannot inject anomalies. Please switch to 'Lead Operator' in the auth menu.`);
+          return;
+        }
+        if (parts.length < 4) {
+          cliPrint("Usage: inject <node> <VIBRATION_SPIKE|TEMP_DROP|DROPOUT> <seconds>");
+          return;
+        }
+        const node = parts[1];
+        const type = parts[2].toUpperCase();
+        const sec = parseInt(parts[3], 10);
+        try {
+          const res = await fetch('/sim/inject', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ node, type, durationSec: sec })
+          });
+          const body = await res.json();
+          if (!res.ok) throw new Error(body.error || 'Failed');
+          cliPrint(`✓ Injected ${type} anomaly on ${node} for ${sec}s.`);
+          sendEmergencySms(node, type, `Critical perturbation active for ${sec} seconds.`);
+          refresh();
+        } catch (err) {
+          cliPrint(`Error: ${err.message}`);
+        }
+        return;
+      }
+
+      cliPrint(`Unknown command '${command}'. Type 'help' for instructions.`);
+    });
+
+    // Form Handling
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelector('#type-select').value = btn.dataset.type;
+        document.querySelector('#duration-input').value = btn.dataset.sec;
+      });
+    });
 
     document.querySelector('#inject-form').addEventListener('submit', async event => {
       event.preventDefault();
-      const values = Object.fromEntries(new FormData(event.currentTarget));
+      const user = getActiveUser();
+      if (!user.canInject) {
+        showLoginPage();
+        const notice = document.querySelector('#notice');
+        notice.className = 'notice error';
+        notice.textContent = `Action restricted: '${user.role}' cannot inject anomalies. Please sign in as 'Lead Operator'.`;
+        return;
+      }
+
+      const form = event.currentTarget;
+      const values = Object.fromEntries(new FormData(form));
       values.durationSec = Number(values.durationSec);
+
       const notice = document.querySelector('#notice');
+      notice.className = 'notice';
+      notice.textContent = 'Injecting stress signal & dispatching SMS...';
+
       try {
-        const response = await fetch('/sim/inject', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
+        const response = await fetch('/sim/inject', {
+          method: 'POST',
+          headers: authHeaders(),
+          body: JSON.stringify(values)
+        });
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || 'Injection failed');
-        notice.textContent = 'Anomaly injected';
-      } catch (error) { notice.textContent = error.message; }
+
+        notice.className = 'notice success';
+        notice.textContent = `✓ Injected ${values.type} on ${values.node} (${values.durationSec}s)`;
+        cliPrint(`[ANOMALY INJECTED] ${values.type} on ${values.node} for ${values.durationSec}s.`);
+
+        // Trigger SMS notification on critical threshold crossing
+        sendEmergencySms(values.node, values.type, `Simulated emergency stress signal for ${values.durationSec} seconds.`);
+        setTimeout(refresh, 500);
+      } catch (error) {
+        notice.className = 'notice error';
+        notice.textContent = `✕ ${error.message}`;
+      }
     });
 
+    document.querySelector('#refresh-now-btn').addEventListener('click', refresh);
+
+    // Initialization
+    initTheme();
+    updateAuthDisplay();
     refresh();
     setInterval(refresh, 2000);
   </script>

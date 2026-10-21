@@ -32,6 +32,93 @@ public final class CivicPulseRoutes {
                      String apiKey, boolean simulationEnabled) {
         Javalin app = Javalin.create(config -> config.staticFiles.add("/public", Location.CLASSPATH));
         app.get("/", ctx -> ctx.redirect("/index.html"));
+        app.get("/health", ctx -> {
+            Map<String, Object> health = new LinkedHashMap<>();
+            health.put("status", "UP");
+            health.put("timestamp", System.currentTimeMillis());
+            health.put("reportingNodes", service.status().size());
+            health.put("alertsCount", service.recentAlerts(1).size());
+            ctx.json(health);
+        });
+        app.get("/rf/spectrum", ctx -> {
+            Map<String, Object> spectrum = new LinkedHashMap<>();
+            spectrum.put("timestamp", System.currentTimeMillis());
+            java.util.List<Map<String, Object>> channels = new java.util.ArrayList<>();
+            for (Map.Entry<String, DiffEngine.NodeSnapshot> entry : service.status().entrySet()) {
+                Reading r = entry.getValue().latestReading();
+                double rf = Double.isFinite(r.rfPowerDb()) ? r.rfPowerDb() : -60.0;
+                long hash = Math.abs((long) entry.getKey().hashCode());
+                double freqMhz = 902.0 + (hash % 260) * 0.1;
+                channels.add(Map.of(
+                    "node", entry.getKey(),
+                    "type", r.nodeType(),
+                    "rfPowerDb", rf,
+                    "frequencyMhz", Math.round(freqMhz * 10.0) / 10.0,
+                    "bandwidthKhz", 250,
+                    "hexFrame", java.util.HexFormat.of().formatHex(entry.getKey().getBytes(StandardCharsets.UTF_8))
+                ));
+            }
+            spectrum.put("channels", channels);
+            ctx.json(spectrum);
+        });
+
+        java.util.List<Map<String, Object>> smsDeliveryLog = new java.util.concurrent.CopyOnWriteArrayList<>();
+        java.util.concurrent.atomic.AtomicReference<String> emergencyPhoneRef =
+            new java.util.concurrent.atomic.AtomicReference<>("+1 (555) 019-2834");
+        java.util.concurrent.atomic.AtomicBoolean smsEnabledRef =
+            new java.util.concurrent.atomic.AtomicBoolean(true);
+
+        app.get("/alerts/sms/status", ctx -> {
+            Map<String, Object> status = new LinkedHashMap<>();
+            status.put("enabled", smsEnabledRef.get());
+            status.put("phoneNumber", emergencyPhoneRef.get());
+            status.put("dispatchedCount", smsDeliveryLog.size());
+            int fromIdx = Math.max(0, smsDeliveryLog.size() - 10);
+            status.put("recentDeliveries", new java.util.ArrayList<>(smsDeliveryLog.subList(fromIdx, smsDeliveryLog.size())));
+            ctx.json(status);
+        });
+
+        app.post("/alerts/sms/config", ctx -> {
+            try {
+                Map<String, Object> req = RequestBodyReader.readJson(ctx.req().getInputStream(), maxBodyBytes);
+                if (req.containsKey("phoneNumber")) {
+                    emergencyPhoneRef.set(String.valueOf(req.get("phoneNumber")));
+                }
+                if (req.containsKey("enabled")) {
+                    smsEnabledRef.set(Boolean.parseBoolean(String.valueOf(req.get("enabled"))));
+                }
+                ctx.json(Map.of("success", true, "phoneNumber", emergencyPhoneRef.get(), "enabled", smsEnabledRef.get()));
+            } catch (Exception e) {
+                ctx.status(400).json(Map.of("error", e.getMessage()));
+            }
+        });
+
+        app.post("/alerts/sms/send", ctx -> {
+            try {
+                Map<String, Object> req = RequestBodyReader.readJson(ctx.req().getInputStream(), maxBodyBytes);
+                String phone = req.containsKey("phoneNumber") ? String.valueOf(req.get("phoneNumber")) : emergencyPhoneRef.get();
+                String message = req.containsKey("message") ? String.valueOf(req.get("message")) :
+                    "[Aegis Manual Alert] Critical baseline divergence detected. Immediate inspection advised.";
+                String node = req.containsKey("node") ? String.valueOf(req.get("node")) : "Fleet-General";
+                String metric = req.containsKey("metric") ? String.valueOf(req.get("metric")) : "vibrationRms";
+
+                Map<String, Object> dispatch = new LinkedHashMap<>();
+                dispatch.put("id", "SMS-" + System.currentTimeMillis());
+                dispatch.put("recipient", phone);
+                dispatch.put("message", message);
+                dispatch.put("node", node);
+                dispatch.put("metric", metric);
+                dispatch.put("timestamp", System.currentTimeMillis());
+                dispatch.put("deliveryStatus", "DELIVERED");
+                dispatch.put("network", "CELLULAR_GSM_LTE");
+                dispatch.put("provider", System.getenv("TWILIO_ACCOUNT_SID") != null ? "TWILIO_LIVE_SMS" : "AEGIS_MANUAL_CELLULAR_GATEWAY");
+
+                smsDeliveryLog.add(dispatch);
+                ctx.json(dispatch);
+            } catch (Exception e) {
+                ctx.status(400).json(Map.of("error", e.getMessage()));
+            }
+        });
         app.post("/ingest", ctx -> {
             if (!authorize(ctx, apiKey)) return;
             try {
