@@ -25,10 +25,24 @@ measurement per second. It does not open a radio device or transmit anything.
    scalar RF readings to the ordinary `/ingest` route; CivicPulse anonymizes the
    MAC before status, storage, or alert generation.
 
-The sender calculates `10 log10(mean(|sample|^2))`. Its standard-library HTTP
-POST runs on a daemon worker with a one-second timeout and a one-reading queue, so a slow or
-unavailable backend cannot block GNU Radio's `work()` method. If the queue is
-full, an old pending sample is kept and the new sample is dropped.
+The sender calculates `10 log10(mean(|sample|^2))`. Its HTTP
+POST runs on a daemon worker with a bounded queue and non-blocking timeout, so a slow or
+unavailable backend cannot block GNU Radio's `work()` method or trigger `ConnectTimeoutError` crashes.
+
+### Connecting to Render or Remote Deployments
+If your CivicPulse server is hosted on Render (e.g. `https://civicpulse.onrender.com`), you can point the GNU Radio flowgraph to Render without editing code:
+- Set the `CIVICPULSE_URL` environment variable:
+  ```bash
+  # PowerShell
+  $env:CIVICPULSE_URL = "https://your-app.onrender.com/ingest"
+  # Bash
+  export CIVICPULSE_URL="https://your-app.onrender.com/ingest"
+  ```
+- If an API Key is configured on Render, set:
+  ```bash
+  $env:CIVICPULSE_API_KEY = "your-api-key"
+  ```
+When running locally without a backend active, the sink suppresses repetitive timeout stack traces and gracefully retries in the background.
 
 There is no AGC. Signal and noise amplitudes are fixed relative values, so the
 reported dB is relative to this flowgraph and is not calibrated dBm or a field

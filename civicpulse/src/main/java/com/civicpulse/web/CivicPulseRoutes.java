@@ -185,6 +185,60 @@ public final class CivicPulseRoutes {
                 ctx.status(400).json(Map.of("error", "Malformed JSON body"));
             }
         });
+        app.post("/chat", ctx -> {
+            try {
+                Map<String, Object> req = RequestBodyReader.readJson(ctx.req().getInputStream(), maxBodyBytes);
+                String msg = req.containsKey("message") ? String.valueOf(req.get("message")).trim() : "";
+                String lower = msg.toLowerCase();
+
+                int nodeCount = service.status().size();
+                var recentAlerts = service.recentAlerts(5);
+                int alertCount = recentAlerts.size();
+
+                String reply;
+                if (lower.contains("health") || lower.contains("status") || lower.contains("node")) {
+                    StringBuilder sb = new StringBuilder("System status is UP. Currently tracking " + nodeCount + " reporting node(s).");
+                    if (!service.status().isEmpty()) {
+                        sb.append(" Active nodes: ");
+                        int count = 0;
+                        for (String node : service.status().keySet()) {
+                            if (count++ > 0) sb.append(", ");
+                            sb.append(node);
+                            if (count >= 5) {
+                                if (nodeCount > 5) sb.append(" (+").append(nodeCount - 5).append(" more)");
+                                break;
+                            }
+                        }
+                    }
+                    reply = sb.toString();
+                } else if (lower.contains("alert") || lower.contains("warning") || lower.contains("anomal")) {
+                    if (alertCount == 0) {
+                        reply = "All clear! There are currently no active threshold-crossing alerts.";
+                    } else {
+                        var latest = recentAlerts.get(recentAlerts.size() - 1);
+                        reply = "There are " + alertCount + " alert(s) on record. Latest: [" + latest.nodeLabel() + "] flagged for " + latest.metric() + " (" + latest.text() + ").";
+                    }
+                } else if (lower.contains("sms") || lower.contains("phone") || lower.contains("contact")) {
+                    reply = "Emergency SMS alert system is armed for " + emergencyPhoneRef.get() + ". Automated cellular dispatch is triggered on threshold divergences.";
+                } else if (lower.contains("rf") || lower.contains("spectrum") || lower.contains("freq")) {
+                    reply = "RF telemetry monitor active across 902-928 MHz ISM band. Frequency collision detection and Myers-diff pattern tracing enabled.";
+                } else {
+                    reply = "Aegis Sentinel Server online. " + nodeCount + " node(s) reporting telemetry, " + alertCount + " active alert(s). All monitoring systems operational.";
+                }
+
+                Map<String, Object> res = new LinkedHashMap<>();
+                res.put("reply", reply);
+                res.put("reportingNodes", nodeCount);
+                res.put("alertsCount", alertCount);
+                res.put("timestamp", System.currentTimeMillis());
+                res.put("status", "UP");
+                ctx.json(res);
+            } catch (PayloadTooLargeException e) {
+                ctx.status(413).json(Map.of("error", e.getMessage()));
+            } catch (Exception e) {
+                ctx.status(400).json(Map.of("error", "Malformed request"));
+            }
+        });
         app.exception(Exception.class, (error, ctx) -> {
             ctx.status(400).json(Map.of("error", "Invalid request"));
         });

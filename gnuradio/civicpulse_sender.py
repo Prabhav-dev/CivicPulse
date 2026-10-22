@@ -1,5 +1,6 @@
 import math
 import json
+import os
 import queue
 import threading
 import time
@@ -22,9 +23,19 @@ class blk(gr.sync_block):
             in_sig=[np.complex64],
             out_sig=None,
         )
+        env_url = (os.environ.get("CIVICPULSE_URL") or 
+                   os.environ.get("CIVICPULSE_INGEST_URL") or 
+                   os.environ.get("RENDER_EXTERNAL_URL") or 
+                   os.environ.get("RENDER_URL"))
+        if env_url:
+            env_url = env_url.strip().strip("'\"")
+            if not env_url.endswith("/ingest"):
+                env_url = env_url.rstrip("/") + "/ingest"
+            url = env_url
         self.url = url
         self.node_type = node_type
         self.mac = mac
+        self.api_key = os.environ.get("CIVICPULSE_API_KEY", "").strip()
         self.samples_per_second = max(1, int(sample_rate))
         self.samples_seen = 0
         self.power_sum = 0.0
@@ -66,8 +77,11 @@ class blk(gr.sync_block):
                 "ts": timestamp,
             }
             try:
+                headers = {"Content-Type": "application/json"}
+                if self.api_key:
+                    headers["X-API-Key"] = self.api_key
                 request = Request(self.url, data=json.dumps(payload).encode("utf-8"),
-                                  headers={"Content-Type": "application/json"}, method="POST")
+                                  headers=headers, method="POST")
                 with urlopen(request, timeout=1):
                     pass
             except (OSError, TimeoutError, URLError):

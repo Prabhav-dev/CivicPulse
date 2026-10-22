@@ -879,10 +879,105 @@
       transition: all 0.2s;
     }
     .chip:hover { border-color: var(--teal); color: var(--teal); }
-    .chat-input-row { display: flex; gap: 8px; }
+    .chat-input-row { display: flex; gap: 8px; align-items: center; }
     .chat-input-row input { flex: 1; }
 
-    /* CLI Terminal styles */
+    /* Enhanced Chatbot Toolbar & Tool Buttons */
+    .chat-datasource-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--base);
+      border: 1px solid var(--line-light);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .chat-ds-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--ink-dim);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+    .chat-ds-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00d26a;
+      box-shadow: 0 0 6px rgba(0,210,106,0.6);
+      transition: background 0.3s;
+    }
+    .chat-ds-dot.local {
+      background: #3b82f6;
+      box-shadow: 0 0 6px rgba(59,130,246,0.6);
+    }
+    .chat-ds-dot.error {
+      background: #ff4757;
+      box-shadow: 0 0 6px rgba(255,71,87,0.6);
+    }
+    .chat-server-ctrls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      max-width: 400px;
+      justify-content: flex-end;
+    }
+    .chat-server-input {
+      background: var(--panel);
+      border: 1px solid var(--line-light);
+      border-radius: 4px;
+      color: var(--ink);
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 3px 8px;
+      width: 190px;
+      outline: none;
+    }
+    .chat-server-input:focus {
+      border-color: var(--teal);
+    }
+    .chat-tool-btn {
+      background: var(--base);
+      border: 1px solid var(--line-light);
+      color: var(--ink-dim);
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      outline: none;
+      user-select: none;
+    }
+    .chat-tool-btn:hover {
+      border-color: var(--teal);
+      color: var(--teal);
+      background: var(--panel-hover);
+    }
+    .chat-tool-btn.active {
+      border-color: var(--teal);
+      color: var(--teal);
+      background: rgba(33, 208, 178, 0.1);
+    }
+    .chat-tool-btn.mic-btn.listening {
+      background: #ff4757 !important;
+      color: #ffffff !important;
+      border-color: #ff4757 !important;
+      animation: micPulse 1.2s infinite ease-in-out;
+      box-shadow: 0 0 12px rgba(255, 71, 87, 0.8);
+    }
+    @keyframes micPulse {
+      0% { transform: scale(1); box-shadow: 0 0 4px rgba(255, 71, 87, 0.4); }
+      50% { transform: scale(1.06); box-shadow: 0 0 16px rgba(255, 71, 87, 0.9); }
+      100% { transform: scale(1); box-shadow: 0 0 4px rgba(255, 71, 87, 0.4); }
+    }
     .cli-terminal {
       background: var(--terminal-bg);
       color: #8cdda0;
@@ -1422,9 +1517,22 @@
 
       <!-- Chatbot Assistant Panel -->
       <div class="console-body" id="panel-bot">
+        <!-- Live Server / Local Server Data Control Toolbar -->
+        <div class="chat-datasource-bar">
+          <div class="chat-ds-badge">
+            <span class="chat-ds-dot" id="chat-ds-indicator"></span>
+            <span id="chat-ds-text">Server: Live Backend</span>
+          </div>
+          <div class="chat-server-ctrls">
+            <input type="text" id="chat-server-target" placeholder="Local Server (e.g. http://127.0.0.1:7070)" class="chat-server-input" title="Specify local or remote server URL">
+            <button type="button" id="chat-server-set-btn" class="chat-tool-btn" style="padding: 3px 8px; font-size: 11px;">Connect</button>
+            <button type="button" id="chat-server-reset-btn" class="chat-tool-btn" style="padding: 3px 8px; font-size: 11px;" title="Reset to default backend">Reset</button>
+          </div>
+        </div>
+
         <div class="chat-messages" id="chat-messages">
           <div class="chat-bubble bot">
-            Greetings! I am <strong>Aegis Manual Sentinel Core</strong>. I monitor structural baselines, analyze RF spectrum overlaps, and dispatch emergency SMS alerts on threshold violations. How can I assist you?
+            Greetings! I am <strong>Aegis Sentinel Assistant</strong>. I monitor structural baselines, analyze RF spectrum overlaps, and dispatch emergency SMS alerts on threshold violations.<br><br>💡 <em>Tip: Click the 🎙️ <strong>Speak</strong> button for voice input, or connect a <strong>Local Server</strong> above to stream live telemetry!</em>
           </div>
         </div>
 
@@ -1433,11 +1541,19 @@
           <span class="chip" data-msg="Are there any active maintenance alerts?">🚨 Check Alerts</span>
           <span class="chip" data-msg="Send an emergency SMS alert dispatch">📱 Trigger Emergency SMS</span>
           <span class="chip" data-msg="Show me the RF frequency spectrum and check for overlaps">🌊 Spectrum & Overlaps</span>
+          <span class="chip" data-msg="Check local server telemetry">🖥️ Local Server Data</span>
           <span class="chip" data-msg="How can I connect a new IoT sensor device?">📡 IoT Onboarding</span>
         </div>
 
         <form id="chat-form" class="chat-input-row">
-          <input type="text" id="chat-input" placeholder="Ask Aegis Manual a question (e.g. 'Status of nodes', 'Send test SMS', 'Explain RF overlap')..." autocomplete="off">
+          <button type="button" id="chat-mic-btn" class="chat-tool-btn mic-btn" title="Click to speak (Voice Recognition)" aria-label="Microphone Voice Input">
+            <span class="mic-icon">🎙️</span>
+            <span class="mic-text">Speak</span>
+          </button>
+          <input type="text" id="chat-input" placeholder="Ask Aegis Sentinel a question or click 'Speak' to talk..." autocomplete="off">
+          <button type="button" id="chat-tts-btn" class="chat-tool-btn" title="Toggle Voice Answers (Text-to-Speech)" aria-label="Toggle Voice Response">
+            🔊
+          </button>
           <button type="submit" class="btn-primary" style="padding: 0 18px;">Send</button>
         </form>
       </div>
@@ -2611,50 +2727,268 @@ with urllib.request.urlopen(req) as res:
       });
     });
 
-    // Template-Based Chatbot Engine
-    function botReply(text) {
-      const q = text.toLowerCase().trim();
-      const nodeKeys = Object.keys(cachedNodes);
+    // Enhanced Chatbot Engine with Voice Recognition & Local/Remote Server Integration
+    let activeServerBase = '';
+    let ttsEnabled = false;
+    let isSpeechListening = false;
+    let speechRecognizer = null;
 
-      if (q.includes('sms') || q.includes('phone') || q.includes('text') || q.includes('message')) {
+    // Local / Remote Server Connection Controls
+    const dsIndicator = document.querySelector('#chat-ds-indicator');
+    const dsText = document.querySelector('#chat-ds-text');
+    const serverInput = document.querySelector('#chat-server-target');
+
+    async function setChatServer(targetUrl) {
+      if (!targetUrl) {
+        activeServerBase = '';
+        dsIndicator.className = 'chat-ds-dot';
+        dsText.textContent = 'Server: Live Backend';
+        appendChatMessage('bot', '🔄 Reset data source to primary application backend.');
+        return;
+      }
+      let url = targetUrl.trim().replace(/\/+$/, '');
+      if (!/^https?:\/\//i.test(url)) url = 'http://' + url;
+      try {
+        dsText.textContent = `Connecting to ${url}...`;
+        const testRes = await fetch(`${url}/health`, { method: 'GET', signal: AbortSignal.timeout(3500) });
+        if (testRes.ok) {
+          const healthData = await testRes.json();
+          activeServerBase = url;
+          dsIndicator.className = 'chat-ds-dot local';
+          dsText.textContent = `Server: ${url}`;
+          appendChatMessage('bot', `✅ Connected to server at <strong>${url}</strong>!<br>Status: <strong>${healthData.status || 'UP'}</strong> • Reporting Nodes: <strong>${healthData.reportingNodes || 0}</strong> • Active Alerts: <strong>${healthData.alertsCount || 0}</strong>.<br>Chatbot will now query live telemetry directly from this server.`);
+          speakText(`Connected to server. Status is ${healthData.status || 'up'}.`);
+        } else {
+          throw new Error(`HTTP ${testRes.status}`);
+        }
+      } catch (err) {
+        dsIndicator.className = 'chat-ds-dot error';
+        dsText.textContent = `Offline: ${url}`;
+        appendChatMessage('bot', `⚠️ Could not reach server at <strong>${url}</strong> (${err.message}).<br>Ensure the local server is running and accessible (e.g. <code>http://127.0.0.1:7070</code>).`);
+      }
+    }
+
+    document.querySelector('#chat-server-set-btn').addEventListener('click', () => {
+      setChatServer(serverInput.value);
+    });
+    document.querySelector('#chat-server-reset-btn').addEventListener('click', () => {
+      serverInput.value = '';
+      setChatServer('');
+    });
+    serverInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        setChatServer(serverInput.value);
+      }
+    });
+
+    // Voice Speech Recognition (Microphone)
+    const micBtn = document.querySelector('#chat-mic-btn');
+    const micText = micBtn ? micBtn.querySelector('.mic-text') : null;
+    const chatInput = document.querySelector('#chat-input');
+
+    const SpeechRecCls = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecCls) {
+      speechRecognizer = new SpeechRecCls();
+      speechRecognizer.continuous = false;
+      speechRecognizer.interimResults = true;
+      speechRecognizer.lang = 'en-US';
+
+      speechRecognizer.onstart = () => {
+        isSpeechListening = true;
+        micBtn.classList.add('listening');
+        if (micText) micText.textContent = 'Listening...';
+        chatInput.placeholder = 'Listening... speak clearly into your mic 🎙️';
+      };
+
+      speechRecognizer.onresult = (e) => {
+        let transcript = '';
+        for (let i = e.resultIndex; i < e.results.length; ++i) {
+          transcript += e.results[i][0].transcript;
+        }
+        chatInput.value = transcript;
+      };
+
+      speechRecognizer.onerror = (e) => {
+        console.warn('Speech recognition error:', e.error);
+        if (e.error === 'not-allowed') {
+          appendChatMessage('bot', '⚠️ Microphone access was denied. Please allow microphone permissions in your browser address bar.');
+        }
+      };
+
+      speechRecognizer.onend = () => {
+        isSpeechListening = false;
+        micBtn.classList.remove('listening');
+        if (micText) micText.textContent = 'Speak';
+        chatInput.placeholder = "Ask Aegis Sentinel a question or click 'Speak' to talk...";
+        if (chatInput.value.trim().length > 0) {
+          handleUserChatSubmit(chatInput.value.trim());
+          chatInput.value = '';
+        }
+      };
+
+      micBtn.addEventListener('click', () => {
+        if (isSpeechListening) {
+          speechRecognizer.stop();
+        } else {
+          try {
+            speechRecognizer.start();
+          } catch (err) {
+            console.warn(err);
+          }
+        }
+      });
+    } else {
+      if (micBtn) {
+        micBtn.title = 'Speech Recognition is not supported by your current browser (Works best in Chrome/Edge)';
+        micBtn.addEventListener('click', () => {
+          appendChatMessage('bot', '🎙️ Speech recognition is not supported in this browser. Please use Chrome, Edge, or a browser supporting the Web Speech API.');
+        });
+      }
+    }
+
+    // Text-To-Speech (TTS) Voice Responses
+    const ttsBtn = document.querySelector('#chat-tts-btn');
+    function speakText(text) {
+      if (!ttsEnabled || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      // Remove HTML tags and emojis for clean speech synthesis
+      const clean = text.replace(/<[^>]*>/g, '').replace(/[^\w\s.,!?'%-]/g, '').trim();
+      if (!clean) return;
+      const utter = new SpeechSynthesisUtterance(clean);
+      utter.rate = 1.05;
+      utter.pitch = 1.0;
+      window.speechSynthesis.speak(utter);
+    }
+
+    if (ttsBtn) {
+      ttsBtn.addEventListener('click', () => {
+        ttsEnabled = !ttsEnabled;
+        ttsBtn.classList.toggle('active', ttsEnabled);
+        ttsBtn.textContent = ttsEnabled ? '🔊' : '🔇';
+        ttsBtn.title = ttsEnabled ? 'Voice audio enabled (click to mute)' : 'Voice audio muted (click to enable)';
+        if (ttsEnabled) speakText('Voice synthesis activated.');
+      });
+    }
+
+    // Dynamic Live Data Querying from Local or Remote Server
+    async function botReplyAsync(text) {
+      const q = text.toLowerCase().trim();
+      const serverPrefix = activeServerBase || '';
+
+      // 1. First try calling the server's dedicated /chat endpoint
+      try {
+        const chatRes = await fetch(`${serverPrefix}/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text }),
+          signal: AbortSignal.timeout(3000)
+        });
+        if (chatRes.ok) {
+          const chatJson = await chatRes.json();
+          if (chatJson.reply) {
+            return chatJson.reply;
+          }
+        }
+      } catch (err) {
+        // Fall back to querying individual telemetry endpoints
+      }
+
+      // 2. Emergency SMS dispatch request
+      if (q.includes('sms') || q.includes('phone') || q.includes('text') || q.includes('dispatch') || q.includes('emergency')) {
         sendEmergencySms('Bridge-1388DB13F161', 'vibrationRms', 'Chatbot emergency dispatch request triggered.');
         return `📱 Emergency SMS notification dispatched to ${emergencyPhoneNumber}! Delivery status: DELIVERED via LTE/GSM Gateway.`;
       }
 
-      if (q.includes('health') || q.includes('doing') || q.includes('status')) {
-        const stale = Object.values(cachedNodes).filter(n => {
-          const stats = Object.values(n.baselineStats || {});
-          return stats.length > 0 && stats.every(s => s.stale);
-        }).length;
-        if (nodeKeys.length === 0) return "Gathering telemetry... Waiting for infrastructure nodes to register.";
-        return `Aegis Manual Sentinel health is at ${Math.round(((nodeKeys.length - stale)/nodeKeys.length)*100)}%. There are ${nodeKeys.length} reporting nodes in the fleet (${nodeKeys.length - stale} active, ${stale} stale). Emergency SMS gateway is armed for ${emergencyPhoneNumber}.`;
-      }
+      // 3. System Health & Node Status queries
+      if (q.includes('health') || q.includes('doing') || q.includes('status') || q.includes('node') || q.includes('fleet')) {
+        try {
+          const res = await fetch(`${serverPrefix}/status`, { signal: AbortSignal.timeout(3000) });
+          const nodes = res.ok ? await res.json() : cachedNodes;
+          const nodeKeys = Object.keys(nodes);
+          if (nodeKeys.length === 0) {
+            return `No infrastructure nodes currently reporting on ${activeServerBase || 'server'}. Telemetry listeners armed.`;
+          }
+          const staleCount = Object.values(nodes).filter(n => {
+            const stats = Object.values(n.baselineStats || {});
+            return stats.length > 0 && stats.every(s => s.stale);
+          }).length;
+          const activeCount = nodeKeys.length - staleCount;
+          const healthPct = Math.round((activeCount / nodeKeys.length) * 100);
 
-      if (q.includes('spectrum') || q.includes('freq') || q.includes('overlap')) {
-        const delta = Math.abs(carrierFreq - interfererFreq);
-        const overlap = delta <= 0.25;
-        if (overlap) {
-          return `⚠️ RF Spectrum Alert: Active collision detected between carrier (${carrierFreq.toFixed(1)} MHz) and interferer (${interfererFreq.toFixed(1)} MHz). Spacing is only ${Math.round(delta*1000)} kHz (channel bandwidth is 250 kHz). Check the Live RF Generator above to view the corrupted hex stream!`;
+          let summary = `📊 Fleet Status on <strong>${activeServerBase || 'current server'}</strong>: Health at <strong>${healthPct}%</strong>. Tracking <strong>${nodeKeys.length} nodes</strong> (${activeCount} active, ${staleCount} stale).<br><br><strong>Sample Node Metrics:</strong><br>`;
+          nodeKeys.slice(0, 3).forEach(k => {
+            const n = nodes[k];
+            const v = n.vibrationRms !== undefined && n.vibrationRms !== null ? `${Number(n.vibrationRms).toFixed(2)}g` : 'N/A';
+            const t = n.tempC !== undefined && n.tempC !== null ? `${Number(n.tempC).toFixed(1)}°C` : 'N/A';
+            const rf = n.rfPowerDb !== undefined && n.rfPowerDb !== null ? `${Number(n.rfPowerDb).toFixed(1)}dB` : 'N/A';
+            summary += `• <strong>${k}</strong> (${n.nodeType || 'node'}): Vib: ${v}, Temp: ${t}, RF: ${rf}<br>`;
+          });
+          if (nodeKeys.length > 3) summary += `<em>...and ${nodeKeys.length - 3} more nodes.</em>`;
+          return summary;
+        } catch (e) {
+          return `Could not fetch live node status from ${activeServerBase || 'server'}: ${e.message}`;
         }
-        return `RF spectrum is currently nominal at ${carrierFreq.toFixed(1)} MHz. Spacing to interferer is safe (${Math.round(delta*1000)} kHz). No active frequency overlaps detected.`;
       }
 
+      // 4. RF Spectrum & Overlap queries
+      if (q.includes('spectrum') || q.includes('freq') || q.includes('overlap') || q.includes('carrier') || q.includes('rf')) {
+        try {
+          const specRes = await fetch(`${serverPrefix}/rf/spectrum`, { signal: AbortSignal.timeout(3000) });
+          let channelCount = 0;
+          if (specRes.ok) {
+            const specData = await specRes.json();
+            channelCount = (specData.channels || []).length;
+          }
+          const delta = Math.abs(carrierFreq - interfererFreq);
+          const overlap = delta <= 0.25;
+          if (overlap) {
+            return `⚠️ RF Spectrum Alert: Active collision detected between carrier (${carrierFreq.toFixed(1)} MHz) and interferer (${interfererFreq.toFixed(1)} MHz). Spacing is only ${Math.round(delta*1000)} kHz (channel bandwidth is 250 kHz). Server tracking ${channelCount} RF channels.`;
+          }
+          return `RF spectrum is currently nominal at ${carrierFreq.toFixed(1)} MHz. Spacing to interferer is safe (${Math.round(delta*1000)} kHz). Active RF channels monitored on server: ${channelCount}.`;
+        } catch (e) {
+          return `RF spectrum is operating. Carrier at ${carrierFreq.toFixed(1)} MHz, interferer at ${interfererFreq.toFixed(1)} MHz.`;
+        }
+      }
+
+      // 5. Active Alerts & Anomalies
+      if (q.includes('alert') || q.includes('warning') || q.includes('anomal') || q.includes('event')) {
+        try {
+          const res = await fetch(`${serverPrefix}/alerts?limit=10`, { signal: AbortSignal.timeout(3000) });
+          const alerts = res.ok ? await res.json() : cachedAlerts;
+          if (!alerts.length) {
+            return `✅ All clear! There are currently no active threshold-crossing alerts on ${activeServerBase || 'the server'}. All infrastructure operates within baseline tolerances.`;
+          }
+          const latest = alerts[alerts.length - 1];
+          return `🚨 Found <strong>${alerts.length} logged alert(s)</strong> on ${activeServerBase || 'the server'}.<br>Latest Alert: <strong>[${latest.nodeLabel}]</strong> flagged for <strong>${latest.metric}</strong> (${latest.source} source).<br>Explanation: "${latest.text}"`;
+        } catch (e) {
+          return `Alert service operational. No local server errors recorded.`;
+        }
+      }
+
+      // 6. Local Server / Server Connection query
+      if (q.includes('server') || q.includes('local') || q.includes('ping') || q.includes('backend') || q.includes('ip') || q.includes('port')) {
+        const target = activeServerBase || window.location.origin;
+        const t0 = performance.now();
+        try {
+          const res = await fetch(`${target}/health`, { signal: AbortSignal.timeout(3000) });
+          const latency = Math.round(performance.now() - t0);
+          if (res.ok) {
+            const h = await res.json();
+            return `🖥️ Server Connection: <strong>${target}</strong><br>Status: <strong>${h.status || 'UP'}</strong><br>Roundtrip Latency: <strong>${latency}ms</strong><br>Reporting Nodes: <strong>${h.reportingNodes || 0}</strong><br>Active Alerts: <strong>${h.alertsCount || 0}</strong><br>Server Timestamp: ${new Date(h.timestamp || Date.now()).toLocaleTimeString()}`;
+          }
+        } catch (e) {
+          return `🖥️ Server target is <strong>${target}</strong>, but connection timed out (${e.message}). You can change the server URL in the toolbar above.`;
+        }
+      }
+
+      // 7. IoT onboarding queries
       if (q.includes('iot') || q.includes('connect') || q.includes('device') || q.includes('sensor')) {
-        return `To connect IoT devices:\n1. Click the "📡 Connect IoT Device" button in the header.\n2. You can use our Live Ingestion Simulator or copy our ready-to-run cURL/Python/ESP32 code templates.\n3. The endpoint is POST /ingest accepting scalar JSON telemetry.`;
+        return `To connect IoT devices:<br>1. Click the "📡 Connect IoT Device" button in the header.<br>2. You can use our Live Ingestion Simulator or copy ready-to-run cURL/Python/ESP32 code templates.<br>3. Send POST requests to <code>${activeServerBase || ''}/ingest</code> with JSON telemetry: <code>{"mac":"AA:BB:CC:11:22:33","vibrationRms":0.12,"tempC":24.5}</code>.`;
       }
 
-      if (q.includes('alert') || q.includes('warning') || q.includes('anomal')) {
-        if (!cachedAlerts.length) return "All clear! There are currently no active threshold-crossing alerts. All infrastructure telemetry is operating safely within baseline tolerances.";
-        const latest = cachedAlerts[cachedAlerts.length - 1];
-        return `We have ${cachedAlerts.length} alert(s) logged. Most recent: [${latest.nodeLabel}] flagged for ${latest.metric} (${latest.source} alert). Explanation: "${latest.text}"`;
-      }
-
-      return `I understand you're asking about "${text}". You can ask me to:
-• "Send emergency SMS alert" - trigger cellular notification
-• "Check System Health" - overview of active infrastructure
-• "RF Spectrum & Overlaps" - check frequency collision status
-• "Connect IoT Device" - guide for onboarding sensors
-• Or run commands directly in the 'CLI Terminal' tab!`;
+      // 8. General fallback
+      return `I understand you're asking about "${text}".<br>You can ask me to:<br>• "Status of nodes" - live telemetry breakdown<br>• "Check alerts" - recent anomaly detections<br>• "RF spectrum & overlaps" - carrier collision analysis<br>• "Local server health" - ping and inspect connected server<br>• "Send emergency SMS alert" - dispatch cellular notification<br>• Or connect a local server (e.g. <code>http://127.0.0.1:7070</code>) in the toolbar above!`;
     }
 
     function appendChatMessage(sender, text) {
@@ -2666,28 +3000,25 @@ with urllib.request.urlopen(req) as res:
       container.scrollTop = container.scrollHeight;
     }
 
-    document.querySelector('#chat-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const input = document.querySelector('#chat-input');
-      const val = input.value.trim();
+    async function handleUserChatSubmit(val) {
       if (!val) return;
       appendChatMessage('user', val);
-      input.value = '';
+      const reply = await botReplyAsync(val);
+      appendChatMessage('bot', reply);
+      speakText(reply);
+    }
 
-      setTimeout(() => {
-        const reply = botReply(val);
-        appendChatMessage('bot', reply);
-      }, 300);
+    document.querySelector('#chat-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = chatInput.value.trim();
+      chatInput.value = '';
+      handleUserChatSubmit(val);
     });
 
     document.querySelectorAll('.suggestion-chips .chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const msg = chip.dataset.msg;
-        appendChatMessage('user', msg);
-        setTimeout(() => {
-          const reply = botReply(msg);
-          appendChatMessage('bot', reply);
-        }, 300);
+        handleUserChatSubmit(msg);
       });
     });
 

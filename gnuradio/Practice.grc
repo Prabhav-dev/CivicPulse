@@ -28,10 +28,11 @@ options:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [48, 20.0]
+    coordinate:
+    - 48
+    - 20.0
     rotation: 0
     state: enabled
-
 blocks:
 - name: interferer_amp
   id: variable_qtgui_range
@@ -51,7 +52,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [520, 20.0]
+    coordinate:
+    - 520
+    - 20.0
     rotation: 0
     state: enabled
 - name: samp_rate
@@ -63,7 +66,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [320, 40.0]
+    coordinate:
+    - 320
+    - 40.0
     rotation: 0
     state: enabled
 - name: analog_noise_source_x_0
@@ -82,7 +87,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [16, 228.0]
+    coordinate:
+    - 16
+    - 228.0
     rotation: 0
     state: enabled
 - name: band_pass_filter_0
@@ -107,7 +114,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [240, 400.0]
+    coordinate:
+    - 240
+    - 400.0
     rotation: 0
     state: enabled
 - name: blocks_add_xx_0
@@ -125,7 +134,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [392, 244.0]
+    coordinate:
+    - 392
+    - 244.0
     rotation: 0
     state: enabled
 - name: blocks_moving_average_xx_0
@@ -145,7 +156,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [928, 296.0]
+    coordinate:
+    - 928
+    - 296.0
     rotation: 0
     state: enabled
 - name: blocks_throttle2_0
@@ -166,7 +179,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [536, 384.0]
+    coordinate:
+    - 536
+    - 384.0
     rotation: 0
     state: enabled
 - name: digital_glfsr_source_x_0
@@ -186,40 +201,74 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [16, 552.0]
+    coordinate:
+    - 16
+    - 552.0
     rotation: 0
     state: enabled
 - name: epy_block_0
   id: epy_block
   parameters:
-    _source_code: "import numpy as np\nfrom gnuradio import gr\nimport requests\n\
-      import time\n\nclass civicpulse_http_sink(gr.sync_block):\n    \"\"\"\n    CivicPulse\
-      \ HTTP Telemetry Sink\n    Calculates average power (dB) and posts JSON to CivicPulse.\n\
-      \    \"\"\"\n    def __init__(self, url=\"http://127.0.0.1:7070/ingest\", mac=\"\
-      AA:BB:CC:DD:EE:FF\", node_type=\"utilityline\"):\n        gr.sync_block.__init__(\n\
-      \            self,\n            name='CivicPulse HTTP Sink',\n            in_sig=[np.float32],\
-      \  # Accepts float stream from your filters/moving average\n            out_sig=None\
-      \           # Sink block (no output stream)\n        )\n        if \"[\" in url\
-      \ and \"](\" in url:\n            url = url.split(\"](\")[1].rstrip(\")\")\n\
-      \        self.url = url.strip().strip(\"'\\\"\")\n        self.mac = mac.strip().strip(\"'\\\"\")\n\
-      \        self.node_type = node_type.strip().strip(\"'\\\"\")\n        self.last_send_time\
-      \ = 0.0\n\n    def work(self, input_items, output_items):\n        in0 = input_items[0]\n\
-      \        current_time = time.time()\n        \n        # Send telemetry once\
-      \ every 1.0 second to avoid flooding the backend\n        if len(in0) > 0 and\
-      \ (current_time - self.last_send_time) >= 1.0:\n            # Calculate average\
-      \ power in relative dB\n            power_rms = float(np.mean(in0**2))\n   \
-      \         power_db = float(10 * np.log10(power_rms + 1e-12))\n\n          \
-      \  payload = {\n                \"nodeType\": self.node_type,\n           \
-      \     \"mac\": self.mac,\n                \"rfPowerDb\": round(power_db, 2),\n\
-      \                \"ts\": int(current_time * 1000)\n            }\n         \
-      \   \n            headers = {\"Content-Type\": \"application/json\"}\n     \
-      \       \n            try:\n                # Non-blocking HTTP POST request\
-      \ to CivicPulse\n                resp = requests.post(self.url, json=payload,\
-      \ headers=headers, timeout=0.8)\n                print(f\"[CivicPulse Sink]\
-      \ Ingested RF Power: {round(power_db, 2)} dB -> HTTP {resp.status_code}\")\n\
-      \            except Exception as e:\n                print(f\"[CivicPulse Sink\
-      \ Warning] Could not post to {self.url}: {e}\")\n                \n        \
-      \    self.last_send_time = current_time\n\n        return len(in0)"
+    _source_code: "import os\nimport queue\nimport threading\nimport time\nimport\
+      \ numpy as np\nfrom gnuradio import gr\nimport requests\n\nclass civicpulse_http_sink(gr.sync_block):\n\
+      \    \"\"\"\n    CivicPulse HTTP Telemetry Sink\n    Calculates average power\
+      \ (dB) and posts JSON to CivicPulse asynchronously.\n    Supports Render deployments\
+      \ and suppressed connection timeouts.\n    \"\"\"\n    def __init__(self, url=\"\
+      http://127.0.0.1:7070/ingest\", mac=\"AA:BB:CC:DD:EE:FF\", node_type=\"utilityline\"\
+      ):\n        gr.sync_block.__init__(\n            self,\n            name='CivicPulse\
+      \ HTTP Sink',\n            in_sig=[np.float32],  # Accepts float stream from\
+      \ your filters/moving average\n            out_sig=None           # Sink block\
+      \ (no output stream)\n        )\n        if \"[\" in url and \"](\" in url:\n\
+      \            url = url.split(\"](\")[1].rstrip(\")\")\n        target_url =\
+      \ url.strip().strip(\"'\\\"\")\n\n        # Automatically resolve environment\
+      \ variable if deployed on Render or configured externally\n        env_url =\
+      \ (os.environ.get(\"CIVICPULSE_URL\") or \n                   os.environ.get(\"\
+      CIVICPULSE_INGEST_URL\") or \n                   os.environ.get(\"RENDER_EXTERNAL_URL\"\
+      ) or \n                   os.environ.get(\"RENDER_URL\"))\n        if env_url:\n\
+      \            env_url = env_url.strip().strip(\"'\\\"\")\n            if not\
+      \ env_url.endswith(\"/ingest\"):\n                env_url = env_url.rstrip(\"\
+      /\") + \"/ingest\"\n            target_url = env_url\n\n        self.url = target_url\n\
+      \        self.mac = mac.strip().strip(\"'\\\"\")\n        self.node_type = node_type.strip().strip(\"\
+      '\\\"\")\n        self.api_key = os.environ.get(\"CIVICPULSE_API_KEY\", \"\"\
+      ).strip()\n        self.last_send_time = 0.0\n\n        # Background worker\
+      \ queue to prevent blocking the DSP work() loop\n        self.queue = queue.Queue(maxsize=2)\n\
+      \        self.running = True\n        self.connected = False\n        self.last_warning_time\
+      \ = 0.0\n\n        self.worker = threading.Thread(target=self._dispatch_loop,\
+      \ name=\"civicpulse-async-poster\", daemon=True)\n        self.worker.start()\n\
+      \n    def work(self, input_items, output_items):\n        in0 = input_items[0]\n\
+      \        current_time = time.time()\n        \n        # Enqueue telemetry once\
+      \ every 1.0 second to avoid flooding\n        if len(in0) > 0 and (current_time\
+      \ - self.last_send_time) >= 1.0:\n            power_rms = float(np.mean(in0**2))\n\
+      \            power_db = float(10 * np.log10(power_rms + 1e-12))\n\n        \
+      \    payload = {\n                \"nodeType\": self.node_type,\n          \
+      \      \"mac\": self.mac,\n                \"rfPowerDb\": round(power_db, 2),\n\
+      \                \"ts\": int(current_time * 1000)\n            }\n\n       \
+      \     try:\n                # Discard stale if queue is full and put new reading\n\
+      \                if self.queue.full():\n                    try:\n         \
+      \               self.queue.get_nowait()\n                    except queue.Empty:\n\
+      \                        pass\n                self.queue.put_nowait((payload,\
+      \ power_db))\n            except queue.Full:\n                pass\n\n     \
+      \       self.last_send_time = current_time\n\n        return len(in0)\n\n  \
+      \  def _dispatch_loop(self):\n        headers = {\"Content-Type\": \"application/json\"\
+      }\n        if self.api_key:\n            headers[\"X-API-Key\"] = self.api_key\n\
+      \n        while self.running:\n            try:\n                payload, power_db\
+      \ = self.queue.get(timeout=0.5)\n            except queue.Empty:\n         \
+      \       continue\n\n            try:\n                resp = requests.post(self.url,\
+      \ json=payload, headers=headers, timeout=1.5)\n                if not self.connected:\n\
+      \                    print(f\"[CivicPulse Sink] Connected successfully to {self.url}\
+      \ (HTTP {resp.status_code})\")\n                    self.connected = True\n\
+      \                else:\n                    print(f\"[CivicPulse Sink] Ingested\
+      \ RF Power: {round(power_db, 2)} dB -> HTTP {resp.status_code}\")\n        \
+      \    except (requests.exceptions.RequestException, Exception) as e:\n      \
+      \          # Gracefully handle timeouts and connection refusals without spamming\
+      \ or throwing errors\n                now = time.time()\n                self.connected\
+      \ = False\n                if now - self.last_warning_time >= 20.0:\n      \
+      \              print(f\"[CivicPulse Sink Notice] Target {self.url} currently\
+      \ unreachable (offline or timeout). \"\n                          f\"Telemetry\
+      \ will retry automatically in background. \"\n                          f\"\
+      (Tip: Set CIVICPULSE_URL to your Render app URL e.g. https://<app>.onrender.com/ingest)\"\
+      )\n                    self.last_warning_time = now\n\n    def stop(self):\n\
+      \        self.running = False\n        return True"
     affinity: ''
     alias: ''
     comment: ''
@@ -236,7 +285,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1200, 524.0]
+    coordinate:
+    - 1200
+    - 524.0
     rotation: 0
     state: enabled
 - name: low_pass_filter_0
@@ -260,7 +311,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [736, 504.0]
+    coordinate:
+    - 736
+    - 504.0
     rotation: 0
     state: enabled
 - name: qtgui_freq_sink_x_0
@@ -341,20 +394,44 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1208, 116.0]
+    coordinate:
+    - 1208
+    - 116.0
     rotation: 0
     state: enabled
-
 connections:
-- [analog_noise_source_x_0, '0', blocks_add_xx_0, '0']
-- [band_pass_filter_0, '0', blocks_add_xx_0, '1']
-- [blocks_add_xx_0, '0', blocks_throttle2_0, '0']
-- [blocks_moving_average_xx_0, '0', epy_block_0, '0']
-- [blocks_moving_average_xx_0, '0', qtgui_freq_sink_x_0, '0']
-- [blocks_throttle2_0, '0', low_pass_filter_0, '0']
-- [digital_glfsr_source_x_0, '0', band_pass_filter_0, '0']
-- [low_pass_filter_0, '0', blocks_moving_average_xx_0, '0']
-
+- - analog_noise_source_x_0
+  - '0'
+  - blocks_add_xx_0
+  - '0'
+- - band_pass_filter_0
+  - '0'
+  - blocks_add_xx_0
+  - '1'
+- - blocks_add_xx_0
+  - '0'
+  - blocks_throttle2_0
+  - '0'
+- - blocks_moving_average_xx_0
+  - '0'
+  - epy_block_0
+  - '0'
+- - blocks_moving_average_xx_0
+  - '0'
+  - qtgui_freq_sink_x_0
+  - '0'
+- - blocks_throttle2_0
+  - '0'
+  - low_pass_filter_0
+  - '0'
+- - digital_glfsr_source_x_0
+  - '0'
+  - band_pass_filter_0
+  - '0'
+- - low_pass_filter_0
+  - '0'
+  - blocks_moving_average_xx_0
+  - '0'
 metadata:
   file_format: 1
   grc_version: 3.10.12.0

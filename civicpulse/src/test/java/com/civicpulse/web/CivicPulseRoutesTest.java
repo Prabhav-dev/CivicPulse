@@ -43,6 +43,9 @@ class CivicPulseRoutesTest {
             HttpResponse<String> health = request(port, "/health", "GET", null, null);
             assertEquals(200, health.statusCode());
             assertEquals("UP", JSON.readTree(health.body()).get("status").asText());
+            HttpResponse<String> chat = request(port, "/chat", "POST", "{\"message\":\"What is node status?\"}", null);
+            assertEquals(200, chat.statusCode());
+            assertEquals("UP", JSON.readTree(chat.body()).get("status").asText());
         } finally {
             app.stop();
             service.close();
